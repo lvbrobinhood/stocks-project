@@ -4,16 +4,12 @@ import Signup from "./pages/Signup";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import Portfolio from "./pages/Portfolio";
+import Header from "./pages/components/Header";
 
 export default function App() {
   return (
     <BrowserRouter>
-      <nav style={{ display: "flex", gap: 12 }}>
-        <Link to="/signup">Signup</Link>
-        <Link to="/login">Login</Link>
-        <Link to="/dashboard">Dashboard</Link>
-        <Link to="/portfolio">Portfolio</Link>
-      </nav>
+      <Header />
 
       <Routes>
         <Route path="/" element={<Navigate to="/login" replace />} />

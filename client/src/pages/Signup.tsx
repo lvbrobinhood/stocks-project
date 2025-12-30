@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { supabase } from "../supabaseClient";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
 export default function Signup() {
   const [email, setEmail] = useState("");
@@ -46,6 +46,7 @@ export default function Signup() {
 
       {err && <p style={{ color: "crimson" }}>{err}</p>}
       {msg && <p>{msg}</p>}
+      <Link to ="../login">Return to Login</Link>
     </div>
   );
 }
