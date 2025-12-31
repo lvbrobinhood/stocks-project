@@ -22,7 +22,7 @@ export default function Login() {
   }
 
   return (
-    <div style={{ maxWidth: 360 }}>
+    <div>
       <h2>Login</h2>
       <form onSubmit={onSubmit}>
         <input
@@ -41,7 +41,7 @@ export default function Login() {
         <button type="submit">Login</button>
       </form>
 
-      {err && <p style={{ color: "crimson" }}>{err}</p>}
+      {err && <p>{err}</p>}
       <Link to ="../signup">Sign up</Link>
     </div>
   );

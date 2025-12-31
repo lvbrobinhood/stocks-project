@@ -1,0 +1,13 @@
+.header-links {
+  margin-top: 20px;
+  margin-bottom: 20px;
+  text-decoration: none;
+  color: inherit;
+  padding: 20px;
+  padding-top: 10px;
+  height: 10px;
+}
+
+.right-border {
+  border-right: 2px solid;
+}

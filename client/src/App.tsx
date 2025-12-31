@@ -5,6 +5,7 @@ import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import Portfolio from "./pages/Portfolio";
 import Header from "./pages/components/Header";
+import "./App.css";
 
 export default function App() {
   return (

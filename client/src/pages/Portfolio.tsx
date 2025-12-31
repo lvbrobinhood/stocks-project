@@ -7,7 +7,7 @@ type QuoteResponse = {
 };
 
 export default function TickerQuotePage() {
-  const [ticker, setTicker] = useState<string>("AAPL");
+  const [ticker, setTicker] = useState<string>("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>("");
   const [quote, setQuote] = useState<QuoteResponse | null>(null);
@@ -54,9 +54,6 @@ export default function TickerQuotePage() {
   return (
     <div className="page">
       <h1>Simple Ticker Quote</h1>
-      <p>
-        Calls your Flask backend: <code>{API_BASE}/quote</code>
-      </p>
 
       <form className="form" onSubmit={onSubmit}>
         <input
@@ -82,11 +79,6 @@ export default function TickerQuotePage() {
           {quote.currency ? ` ${quote.currency}` : ""}
         </div>
       )}
-
-      <p className="hint">
-        If you see a CORS error, ensure Flask CORS allows your frontend origin
-        (e.g. <code>http://localhost:5173</code> or <code>http://localhost:3000</code>).
-      </p>
     </div>
   );
 }
