@@ -467,8 +467,17 @@ export default function PortfolioPage() {
                           </>
                         )}
                       </td>
-                      <td>{pnl!.toFixed(2)}</td>
-                      <td>{pnlPct!.toFixed(2)}%</td>
+                      <td>
+                        {pnl === undefined ? (
+                          <em>No price yet</em>)
+                          : pnl!.toFixed(2)}
+                      </td>
+                      <td>
+                        {pnlPct === undefined ? (
+                          <em>No price yet</em>
+                        )
+                        : pnlPct!.toFixed(2) + "%"} 
+                      </td>
                       <td>
                         <button
                           className="btn"
