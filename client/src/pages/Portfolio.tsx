@@ -1,5 +1,9 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { supabase } from "../supabaseClient"; // <-- adjust path if needed
+import { Pie } from "react-chartjs-2";
+import { Chart as ChartJS, ArcElement, Tooltip, Legend } from "chart.js";
+
+ChartJS.register(ArcElement, Tooltip, Legend);
 
 type QuoteResponse = {
   ticker: string;
@@ -16,6 +20,53 @@ type Holding = {
 type HoldingWithQuote = Holding & {
   quote?: QuoteResponse;
 };
+
+function hashInt(str: string): number {
+  let h = 0;
+  for (let i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) | 0;
+  return Math.abs(h);
+}
+
+function circularHueDistance(a: number, b: number) {
+  const d = Math.abs(a - b) % 360;
+  return Math.min(d, 360 - d);
+}
+
+/**
+ * Generates distinct, stable colours for a list of labels.
+ * - Stable per ticker
+ * - Avoids “too similar” hues within the current chart
+ */
+function generateDistinctColors(labels: string[]) {
+  const usedHues: number[] = [];
+
+  return labels.map((label) => {
+    const seed = hashInt(label);
+
+    // Base hue from hash (stable)
+    let hue = seed % 360;
+
+    // Slight variations for better contrast
+    const sat = 75;
+    const light = 48 + (seed % 14); // 48–61
+
+    // Collision avoidance: keep rotating hue until it's not too close to existing hues
+    const MIN_GAP = 28; // degrees; increase to 35 if you want even more separation
+    const STEP = 137.508; // golden angle
+
+    while (usedHues.some((h) => circularHueDistance(hue, h) < MIN_GAP)) {
+      hue = (hue + STEP) % 360;
+    }
+
+    usedHues.push(hue);
+
+    return {
+      bg: `hsl(${hue} ${sat}% ${light}% / 0.78)`,
+      border: `hsl(${hue} ${sat}% ${Math.max(light - 18, 25)}% / 1)`,
+    };
+  });
+}
+
 
 export default function PortfolioPage() {
   const [ticker, setTicker] = useState("");
@@ -238,6 +289,36 @@ export default function PortfolioPage() {
     quote: quotes[h.ticker],
   }));
 
+  const pieData = useMemo(() => {
+    const slices = enriched
+      .map((h) => {
+        const price = h.quote?.price;
+        if (price === undefined) return null;
+        return { label: h.ticker, value: h.qty * price };
+      })
+      .filter(Boolean) as { label: string; value: number }[];
+
+    // Optional but recommended: stable order -> stable colour assignment
+    slices.sort((a, b) => a.label.localeCompare(b.label));
+
+    const colors = generateDistinctColors(slices.map((s) => s.label));
+
+    return {
+      labels: slices.map((s) => s.label),
+      datasets: [
+        {
+          data: slices.map((s) => s.value),
+          backgroundColor: colors.map((c) => c.bg),
+          borderColor: colors.map((c) => c.border),
+          borderWidth: 0,
+        },
+      ],
+    };
+  }, [enriched]);
+
+
+
+
   const totalMarketValue = enriched.reduce((sum, h) => {
     const price = h.quote?.price ?? 0;
     return sum + h.qty * price;
@@ -319,6 +400,35 @@ export default function PortfolioPage() {
             <strong>Total P/L:</strong> {totalPnL.toFixed(2)}
             {currency ? ` ${currency}` : ""} ({totalPnLPct.toFixed(2)}%)
           </div>
+
+          <div style={{ marginBottom: 12 }}>
+            <strong>Portfolio Breakdown (by Market Value)</strong>
+          </div>
+
+          {pieData.labels.length === 0 ? (
+            <div className="result">Refresh prices to display the chart.</div>
+          ) : (
+            <div style={{ maxWidth: 520 }}>
+              <Pie
+                data={pieData}
+                options={{
+                  responsive: true,
+                  plugins: {
+                    legend: { position: "bottom" },
+                    tooltip: {
+                      callbacks: {
+                        label: (ctx) => {
+                          const v = Number(ctx.raw ?? 0);
+                          return `${ctx.label}: ${v.toFixed(2)}${currency ? ` ${currency}` : ""}`;
+                        },
+                      },
+                    },
+                  },
+                }}
+              />
+            </div>
+          )}
+
 
           <div className="holdings">
             {enriched.map((h) => {
