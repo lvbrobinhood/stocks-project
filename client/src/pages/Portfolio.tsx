@@ -431,7 +431,61 @@ export default function PortfolioPage() {
 
 
           <div className="holdings">
-            {enriched.map((h) => {
+            <table>
+              <thead>
+                <tr>
+                  <th>Ticker</th>
+                  <th>Quantity</th>
+                  <th>Buy Price</th>
+                  <th>Cost Basis</th>
+                  <th>Current Price</th>
+                  <th>PnL</th>
+                  <th>%</th>
+                </tr>
+              </thead>
+            
+              <tbody>
+                {enriched.map((h) => {
+                  const price = h.quote?.price;
+                  const marketValue = price !== undefined ? h.qty * price : undefined;
+                  const costBasis = h.qty * h.costPrice;
+                  const pnl = marketValue !== undefined ? marketValue - costBasis : undefined;
+                  const pnlPct =
+                    pnl !== undefined && costBasis > 0 ? (pnl / costBasis) * 100 : undefined;
+                  return (
+                    <tr key={h.ticker}>
+                      <td>{h.ticker}</td>
+                      <td>{h.qty}</td>
+                      <td>{h.costPrice}</td>
+                      <td>{(h.qty * h.costPrice).toFixed(2)}</td>
+                      <td>
+                        {price === undefined ? (
+                          <em>No price yet</em>
+                        ) : (
+                          <>
+                            {price.toFixed(2)}
+                          </>
+                        )}
+                      </td>
+                      <td>{pnl!.toFixed(2)}</td>
+                      <td>{pnlPct!.toFixed(2)}%</td>
+                      <td>
+                        <button
+                          className="btn"
+                          type="button"
+                          onClick={() => removeHolding(h.ticker)}
+                          disabled={loading}
+                        >
+                          Remove
+                        </button>
+                      </td>
+                    </tr>
+                  );
+
+                })};
+              </tbody>
+            </table>
+            {/*{enriched.map((h) => {
               const price = h.quote?.price;
               const marketValue = price !== undefined ? h.qty * price : undefined;
               const costBasis = h.qty * h.costPrice;
@@ -473,7 +527,7 @@ export default function PortfolioPage() {
                   </button>
                 </div>
               );
-            })}
+            })}*/}
           </div>
         </div>
       )}
