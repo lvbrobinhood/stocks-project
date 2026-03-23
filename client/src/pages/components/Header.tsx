@@ -17,6 +17,7 @@ export default function Header() {
           <div className="container right">       
             <Link to ="./dashboard" className ="header-links right-border">Dashboard </Link>
             <Link to ="./portfolio" className = "header-links right-border">Portfolio </Link>
+            <Link to ="./analysis" className = "header-links right-border">Analysis </Link>
             <Link to ="./login" className="header-links" onClick={handleLogout}>Logout </Link>
             <div></div>
           </div>

@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { supabase } from "../supabaseClient"; // <-- adjust path if needed
 import { Pie } from "react-chartjs-2";
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from "chart.js";
+import "../css/Portfolio.css";
 
 ChartJS.register(ArcElement, Tooltip, Legend);
 
@@ -472,7 +473,7 @@ export default function PortfolioPage() {
                           <em>No price yet</em>)
                           : pnl!.toFixed(2)}
                       </td>
-                      <td>
+                      <td className={pnlPct !== undefined && pnlPct > 0 ? "profit" : "loss"}>
                         {pnlPct === undefined ? (
                           <em>No price yet</em>
                         )
