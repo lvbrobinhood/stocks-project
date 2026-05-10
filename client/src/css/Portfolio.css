@@ -59,6 +59,13 @@
   grid-template-columns: minmax(280px, 360px) minmax(0, 1fr);
   gap: 18px;
   align-items: start;
+  width: 100%;
+}
+
+.holdings-panel {
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
 }
 
 .section-heading {
@@ -86,29 +93,69 @@
 }
 
 .table-scroll {
+  width: 100%;
+  max-width: 100%;
   overflow-x: auto;
 }
 
 table {
   width: 100%;
-  min-width: 780px;
+  min-width: 0;
   border-collapse: collapse;
+  table-layout: fixed;
 }
 
 th,
 td {
-  padding: 13px 12px;
+  padding: 11px 8px;
   border-bottom: 1px solid var(--border);
   text-align: left;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 th {
   color: var(--muted);
   background: #f6f9fb;
-  font-size: 0.75rem;
+  font-size: 0.7rem;
   font-weight: 850;
   text-transform: uppercase;
+}
+
+td {
+  font-size: 0.9rem;
+}
+
+th:nth-child(1),
+td:nth-child(1) {
+  width: 13%;
+}
+
+th:nth-child(2),
+td:nth-child(2) {
+  width: 9%;
+}
+
+th:nth-child(3),
+td:nth-child(3),
+th:nth-child(5),
+td:nth-child(5),
+th:nth-child(6),
+td:nth-child(6),
+th:nth-child(7),
+td:nth-child(7) {
+  width: 14%;
+}
+
+th:nth-child(4),
+td:nth-child(4) {
+  width: 16%;
+}
+
+th:nth-child(8),
+td:nth-child(8) {
+  width: 56px;
 }
 
 tbody tr:hover {
@@ -121,7 +168,25 @@ td em {
 }
 
 .row-action {
+  overflow: visible;
   text-align: right;
+  text-overflow: clip;
+}
+
+.remove-button {
+  display: inline-grid;
+  width: 32px;
+  height: 32px;
+  place-items: center;
+  border: 1px solid #f2c6c2;
+  border-radius: 8px;
+  color: var(--danger);
+  background: #ffffff;
+  font-weight: 850;
+}
+
+.remove-button:hover:not(:disabled) {
+  background: var(--danger-bg);
 }
 
 .profit {

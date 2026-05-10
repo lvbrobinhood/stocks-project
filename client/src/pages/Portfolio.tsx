@@ -454,10 +454,10 @@ export default function PortfolioPage() {
                 <thead>
                   <tr>
                     <th>Ticker</th>
-                    <th>Quantity</th>
-                    <th>Buy price</th>
+                    <th>Qty</th>
+                    <th>Buy</th>
                     <th>Cost basis</th>
-                    <th>Current price</th>
+                    <th>Price</th>
                     <th>P/L</th>
                     <th>%</th>
                     <th></th>
@@ -488,12 +488,14 @@ export default function PortfolioPage() {
                         </td>
                         <td className="row-action">
                           <button
-                            className="btn danger"
+                            className="remove-button"
                             type="button"
                             onClick={() => removeHolding(h.ticker)}
                             disabled={loading}
+                            title={`Remove ${h.ticker}`}
+                            aria-label={`Remove ${h.ticker}`}
                           >
-                            Remove
+                            X
                           </button>
                         </td>
                       </tr>
