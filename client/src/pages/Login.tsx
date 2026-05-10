@@ -22,27 +22,42 @@ export default function Login() {
   }
 
   return (
-    <div>
-      <h2>Login</h2>
-      <form onSubmit={onSubmit}>
-        <input
-          placeholder="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-        />
-        <br />
-        <input
-          placeholder="password"
-          type="password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-        />
-        <br />
-        <button type="submit">Login</button>
+    <main className="auth-page">
+      <section className="auth-panel">
+        <p className="eyebrow">Welcome back</p>
+        <h1 className="auth-title">Log in</h1>
+        <p className="auth-copy">
+          Track holdings, prices, and performance from one focused workspace.
+        </p>
+
+        <form className="auth-form" onSubmit={onSubmit}>
+          <label className="field">
+            <span>Email</span>
+            <input
+              placeholder="you@example.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
+          </label>
+
+          <label className="field">
+            <span>Password</span>
+            <input
+              placeholder="Your password"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+            />
+          </label>
+
+          <button className="btn" type="submit">Login</button>
       </form>
 
-      {err && <p>{err}</p>}
-      <Link to ="../signup">Sign up</Link>
-    </div>
+        {err && <p className="error">{err}</p>}
+        <p className="auth-footer">
+          New here? <Link to="/signup">Create an account</Link>
+        </p>
+      </section>
+    </main>
   );
 }

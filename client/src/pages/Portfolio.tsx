@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useState } from "react";
-import { supabase } from "../supabaseClient"; // <-- adjust path if needed
+import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { supabase } from "../supabaseClient";
 import { Pie } from "react-chartjs-2";
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from "chart.js";
 import "../css/Portfolio.css";
@@ -15,7 +15,7 @@ type QuoteResponse = {
 type Holding = {
   ticker: string;
   qty: number;
-  costPrice: number; // average cost per share
+  costPrice: number;
 };
 
 type HoldingWithQuote = Holding & {
@@ -33,30 +33,19 @@ function circularHueDistance(a: number, b: number) {
   return Math.min(d, 360 - d);
 }
 
-/**
- * Generates distinct, stable colours for a list of labels.
- * - Stable per ticker
- * - Avoids “too similar” hues within the current chart
- */
 function generateDistinctColors(labels: string[]) {
   const usedHues: number[] = [];
 
   return labels.map((label) => {
     const seed = hashInt(label);
-
-    // Base hue from hash (stable)
     let hue = seed % 360;
-
-    // Slight variations for better contrast
     const sat = 75;
-    const light = 48 + (seed % 14); // 48–61
+    const light = 48 + (seed % 14);
+    const minGap = 28;
+    const step = 137.508;
 
-    // Collision avoidance: keep rotating hue until it's not too close to existing hues
-    const MIN_GAP = 28; // degrees; increase to 35 if you want even more separation
-    const STEP = 137.508; // golden angle
-
-    while (usedHues.some((h) => circularHueDistance(hue, h) < MIN_GAP)) {
-      hue = (hue + STEP) % 360;
+    while (usedHues.some((h) => circularHueDistance(hue, h) < minGap)) {
+      hue = (hue + step) % 360;
     }
 
     usedHues.push(hue);
@@ -68,12 +57,14 @@ function generateDistinctColors(labels: string[]) {
   });
 }
 
+function money(value: number, currency: string) {
+  return `${value.toFixed(2)}${currency ? ` ${currency}` : ""}`;
+}
 
 export default function PortfolioPage() {
   const [ticker, setTicker] = useState("");
   const [qty, setQty] = useState<string>("");
   const [costPrice, setCostPrice] = useState<string>("");
-
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [portfolio, setPortfolio] = useState<Holding[]>([]);
@@ -138,14 +129,13 @@ export default function PortfolioPage() {
     if (error) throw new Error(error.message);
   }
 
-  // 1) LOAD holdings from Supabase on mount
   useEffect(() => {
     async function loadHoldings() {
       setLoading(true);
       setError("");
 
       try {
-        const userId = await requireUserId(); // ensures logged in
+        const userId = await requireUserId();
 
         const { data, error } = await supabase
           .from("portfolio_holdings")
@@ -163,7 +153,6 @@ export default function PortfolioPage() {
 
         setPortfolio(holdings);
 
-        // Optional: fetch quotes for loaded holdings
         const results = await Promise.allSettled(
           holdings.map((h) => fetchQuote(h.ticker))
         );
@@ -185,7 +174,6 @@ export default function PortfolioPage() {
     loadHoldings();
   }, []);
 
-  // 2) ADD/UPDATE holding + SAVE to Supabase
   async function addHolding() {
     const t = ticker.trim().toUpperCase();
     const q = parsePositiveNumber(qty.trim());
@@ -196,11 +184,11 @@ export default function PortfolioPage() {
       return;
     }
     if (q === null) {
-      setError("Please enter a valid quantity (> 0).");
+      setError("Please enter a valid quantity above 0.");
       return;
     }
     if (c === null) {
-      setError("Please enter a valid cost price (> 0).");
+      setError("Please enter a valid cost price above 0.");
       return;
     }
 
@@ -209,8 +197,6 @@ export default function PortfolioPage() {
 
     try {
       const quote = await fetchQuote(t);
-
-      // compute the new holding (weighted average cost)
       const existing = portfolio.find((h) => h.ticker === t);
 
       const updatedHolding: Holding = existing
@@ -221,10 +207,8 @@ export default function PortfolioPage() {
           })()
         : { ticker: t, qty: q, costPrice: c };
 
-      // persist first (so UI reflects saved state)
       await upsertHoldingToSupabase(updatedHolding);
 
-      // update UI state
       setPortfolio((prev) => {
         const idx = prev.findIndex((h) => h.ticker === t);
         if (idx === -1) return [...prev, updatedHolding];
@@ -234,7 +218,6 @@ export default function PortfolioPage() {
       });
 
       setQuotes((prev) => ({ ...prev, [t]: quote }));
-
       setTicker("");
       setQty("");
       setCostPrice("");
@@ -265,7 +248,6 @@ export default function PortfolioPage() {
     }
   }
 
-  // 3) REMOVE holding + DELETE from Supabase
   async function removeHolding(t: string) {
     setLoading(true);
     setError("");
@@ -300,9 +282,7 @@ export default function PortfolioPage() {
       })
       .filter(Boolean) as { label: string; value: number }[];
 
-    // Optional but recommended: stable order -> stable colour assignment
     slices.sort((a, b) => a.label.localeCompare(b.label));
-
     const colors = generateDistinctColors(slices.map((s) => s.label));
 
     return {
@@ -318,230 +298,213 @@ export default function PortfolioPage() {
     };
   }, [enriched]);
 
-
-
-
-  const totalMarketValue = enriched.reduce((sum, h) => {
-    const price = h.quote?.price ?? 0;
-    return sum + h.qty * price;
-  }, 0);
-
+  const pricedHoldings = enriched.filter((h) => h.quote?.price !== undefined);
+  const missingQuoteCount = enriched.length - pricedHoldings.length;
+  const allQuotesLoaded = enriched.length > 0 && missingQuoteCount === 0;
+  const totalMarketValue = pricedHoldings.reduce(
+    (sum, h) => sum + h.qty * (h.quote?.price ?? 0),
+    0
+  );
   const totalCostBasis = enriched.reduce((sum, h) => sum + h.qty * h.costPrice, 0);
-
-  const totalPnL = totalMarketValue - totalCostBasis;
-  const totalPnLPct = totalCostBasis > 0 ? (totalPnL / totalCostBasis) * 100 : 0;
-
+  const totalPnL = allQuotesLoaded ? totalMarketValue - totalCostBasis : null;
+  const totalPnLPct =
+    totalPnL !== null && totalCostBasis > 0 ? (totalPnL / totalCostBasis) * 100 : null;
   const currency = enriched.find((h) => h.quote?.currency)?.quote?.currency ?? "";
 
-  function onSubmit(e: React.FormEvent) {
+  function onSubmit(e: FormEvent) {
     e.preventDefault();
     addHolding();
   }
 
   return (
-    <div className="page">
-      <h1>Simple Portfolio Tracker</h1>
-
-      <form className="form" onSubmit={onSubmit}>
-        <input
-          className="ticker-input"
-          value={ticker}
-          onChange={(e) => setTicker(e.target.value)}
-          placeholder="Ticker (e.g. AAPL)"
-        />
-
-        <input
-          className="qty-input"
-          value={qty}
-          onChange={(e) => setQty(e.target.value)}
-          placeholder="Qty (e.g. 10)"
-          inputMode="decimal"
-        />
-
-        <input
-          className="cost-input"
-          value={costPrice}
-          onChange={(e) => setCostPrice(e.target.value)}
-          placeholder="Cost price (e.g. 185.50)"
-          inputMode="decimal"
-        />
-
-        <button className="btn" type="submit" disabled={loading}>
-          {loading ? "Adding..." : "Add"}
-        </button>
-
-        <button
-          className="btn"
-          type="button"
-          onClick={refreshAll}
-          disabled={loading || portfolio.length === 0}
-        >
-          {loading ? "Refreshing..." : "Refresh Prices"}
-        </button>
-      </form>
-
-      {error && (
-        <div className="error">
-          <strong>Error:</strong> {error}
+    <main className="page-shell portfolio-page">
+      <section className="page-heading">
+        <div>
+          <p className="eyebrow">Holdings</p>
+          <h1 className="page-title">Portfolio tracker</h1>
+          <p className="page-subtitle">
+            Add positions, refresh market prices, and watch allocation and return move together.
+          </p>
         </div>
-      )}
+      </section>
+
+      <section className="portfolio-summary">
+        <article className="summary-card">
+          <p className="summary-label">Market value</p>
+          <p className="summary-value">{money(totalMarketValue, currency)}</p>
+          <p className="summary-note">
+            {missingQuoteCount > 0 ? `${missingQuoteCount} quote missing` : "All quotes loaded"}
+          </p>
+        </article>
+        <article className="summary-card">
+          <p className="summary-label">Cost basis</p>
+          <p className="summary-value">{money(totalCostBasis, currency)}</p>
+          <p className="summary-note">{portfolio.length} holdings saved</p>
+        </article>
+        <article className="summary-card">
+          <p className="summary-label">Total P/L</p>
+          <p className={`summary-value ${totalPnL !== null && totalPnL >= 0 ? "profit" : "loss"}`}>
+            {totalPnL === null ? "Waiting for quotes" : money(totalPnL, currency)}
+          </p>
+          <p className="summary-note">
+            {totalPnLPct === null ? "Refresh prices to calculate" : `${totalPnLPct.toFixed(2)}%`}
+          </p>
+        </article>
+      </section>
+
+      <section className="panel portfolio-controls">
+        <form className="form" onSubmit={onSubmit}>
+          <label className="field">
+            <span>Ticker</span>
+            <input
+              className="ticker-input"
+              value={ticker}
+              onChange={(e) => setTicker(e.target.value)}
+              placeholder="AAPL"
+            />
+          </label>
+
+          <label className="field">
+            <span>Quantity</span>
+            <input
+              className="qty-input"
+              value={qty}
+              onChange={(e) => setQty(e.target.value)}
+              placeholder="10"
+              inputMode="decimal"
+            />
+          </label>
+
+          <label className="field">
+            <span>Cost price</span>
+            <input
+              className="cost-input"
+              value={costPrice}
+              onChange={(e) => setCostPrice(e.target.value)}
+              placeholder="185.50"
+              inputMode="decimal"
+            />
+          </label>
+
+          <button className="btn" type="submit" disabled={loading}>
+            {loading ? "Adding..." : "Add holding"}
+          </button>
+
+          <button
+            className="btn secondary"
+            type="button"
+            onClick={refreshAll}
+            disabled={loading || portfolio.length === 0}
+          >
+            {loading ? "Refreshing..." : "Refresh prices"}
+          </button>
+        </form>
+
+        {error && (
+          <div className="error">
+            <strong>Error:</strong> {error}
+          </div>
+        )}
+      </section>
 
       {portfolio.length === 0 ? (
-        <div className="result">No holdings yet. Add one above.</div>
+        <div className="empty-state">No holdings yet. Add your first position above.</div>
       ) : (
-        <div className="result">
-          <div style={{ marginBottom: 8 }}>
-            <strong>Total Market Value:</strong> {totalMarketValue.toFixed(2)}
-            {currency ? ` ${currency}` : ""}
-          </div>
-          <div style={{ marginBottom: 8 }}>
-            <strong>Total Cost Basis:</strong> {totalCostBasis.toFixed(2)}
-            {currency ? ` ${currency}` : ""}
-          </div>
-          <div style={{ marginBottom: 12 }}>
-            <strong>Total P/L:</strong> {totalPnL.toFixed(2)}
-            {currency ? ` ${currency}` : ""} ({totalPnLPct.toFixed(2)}%)
-          </div>
+        <section className="portfolio-grid">
+          <article className="panel allocation-panel">
+            <div className="section-heading">
+              <h2>Allocation</h2>
+              <p>By loaded market value</p>
+            </div>
 
-          <div style={{ marginBottom: 12 }}>
-            <strong>Portfolio Breakdown (by Market Value)</strong>
-          </div>
-
-          {pieData.labels.length === 0 ? (
-            <div className="result">Refresh prices to display the chart.</div>
-          ) : (
-            <div style={{ maxWidth: 520 }}>
-              <Pie
-                data={pieData}
-                options={{
-                  responsive: true,
-                  plugins: {
-                    legend: { position: "bottom" },
-                    tooltip: {
-                      callbacks: {
-                        label: (ctx) => {
-                          const v = Number(ctx.raw ?? 0);
-                          return `${ctx.label}: ${v.toFixed(2)}${currency ? ` ${currency}` : ""}`;
+            {pieData.labels.length === 0 ? (
+              <div className="empty-state compact">Refresh prices to display the chart.</div>
+            ) : (
+              <div className="pie-wrap">
+                <Pie
+                  data={pieData}
+                  options={{
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                      legend: { position: "bottom" },
+                      tooltip: {
+                        callbacks: {
+                          label: (ctx) => {
+                            const v = Number(ctx.raw ?? 0);
+                            return `${ctx.label}: ${money(v, currency)}`;
+                          },
                         },
                       },
                     },
-                  },
-                }}
-              />
+                  }}
+                />
+              </div>
+            )}
+          </article>
+
+          <article className="panel holdings-panel">
+            <div className="section-heading">
+              <h2>Positions</h2>
+              <p>{portfolio.length} total</p>
             </div>
-          )}
 
+            <div className="table-scroll">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Ticker</th>
+                    <th>Quantity</th>
+                    <th>Buy price</th>
+                    <th>Cost basis</th>
+                    <th>Current price</th>
+                    <th>P/L</th>
+                    <th>%</th>
+                    <th></th>
+                  </tr>
+                </thead>
 
-          <div className="holdings">
-            <table>
-              <thead>
-                <tr>
-                  <th>Ticker</th>
-                  <th>Quantity</th>
-                  <th>Buy Price</th>
-                  <th>Cost Basis</th>
-                  <th>Current Price</th>
-                  <th>PnL</th>
-                  <th>%</th>
-                </tr>
-              </thead>
-            
-              <tbody>
-                {enriched.map((h) => {
-                  const price = h.quote?.price;
-                  const marketValue = price !== undefined ? h.qty * price : undefined;
-                  const costBasis = h.qty * h.costPrice;
-                  const pnl = marketValue !== undefined ? marketValue - costBasis : undefined;
-                  const pnlPct =
-                    pnl !== undefined && costBasis > 0 ? (pnl / costBasis) * 100 : undefined;
-                  return (
-                    <tr key={h.ticker}>
-                      <td>{h.ticker}</td>
-                      <td>{h.qty}</td>
-                      <td>{h.costPrice}</td>
-                      <td>{(h.qty * h.costPrice).toFixed(2)}</td>
-                      <td>
-                        {price === undefined ? (
-                          <em>No price yet</em>
-                        ) : (
-                          <>
-                            {price.toFixed(2)}
-                          </>
-                        )}
-                      </td>
-                      <td>
-                        {pnl === undefined ? (
-                          <em>No price yet</em>)
-                          : pnl!.toFixed(2)}
-                      </td>
-                      <td className={pnlPct !== undefined && pnlPct > 0 ? "profit" : "loss"}>
-                        {pnlPct === undefined ? (
-                          <em>No price yet</em>
-                        )
-                        : pnlPct!.toFixed(2) + "%"} 
-                      </td>
-                      <td>
-                        <button
-                          className="btn"
-                          type="button"
-                          onClick={() => removeHolding(h.ticker)}
-                          disabled={loading}
-                        >
-                          Remove
-                        </button>
-                      </td>
-                    </tr>
-                  );
+                <tbody>
+                  {enriched.map((h) => {
+                    const price = h.quote?.price;
+                    const marketValue = price !== undefined ? h.qty * price : undefined;
+                    const costBasis = h.qty * h.costPrice;
+                    const pnl = marketValue !== undefined ? marketValue - costBasis : undefined;
+                    const pnlPct =
+                      pnl !== undefined && costBasis > 0 ? (pnl / costBasis) * 100 : undefined;
 
-                })};
-              </tbody>
-            </table>
-            {/*{enriched.map((h) => {
-              const price = h.quote?.price;
-              const marketValue = price !== undefined ? h.qty * price : undefined;
-              const costBasis = h.qty * h.costPrice;
-              const pnl = marketValue !== undefined ? marketValue - costBasis : undefined;
-              const pnlPct =
-                pnl !== undefined && costBasis > 0 ? (pnl / costBasis) * 100 : undefined;
-
-              return (
-                <div key={h.ticker} className="holding-row">
-                  <div>
-                    <strong>{h.ticker}</strong> — Qty: {h.qty} — Avg Cost:{" "}
-                    {h.costPrice.toFixed(2)}
-                    {currency ? ` ${currency}` : ""}
-                  </div>
-
-                  <div>
-                    {price === undefined ? (
-                      <em>No price yet</em>
-                    ) : (
-                      <>
-                        Price: {price.toFixed(2)}
-                        {h.quote?.currency ? ` ${h.quote.currency}` : ""} | Value:{" "}
-                        {marketValue!.toFixed(2)}
-                        {h.quote?.currency ? ` ${h.quote.currency}` : ""} | P/L:{" "}
-                        {pnl!.toFixed(2)}
-                        {h.quote?.currency ? ` ${h.quote.currency}` : ""} (
-                        {pnlPct!.toFixed(2)}%)
-                      </>
-                    )}
-                  </div>
-
-                  <button
-                    className="btn"
-                    type="button"
-                    onClick={() => removeHolding(h.ticker)}
-                    disabled={loading}
-                  >
-                    Remove
-                  </button>
-                </div>
-              );
-            })}*/}
-          </div>
-        </div>
+                    return (
+                      <tr key={h.ticker}>
+                        <td><strong>{h.ticker}</strong></td>
+                        <td>{h.qty}</td>
+                        <td>{h.costPrice.toFixed(2)}</td>
+                        <td>{money(costBasis, currency)}</td>
+                        <td>{price === undefined ? <em>No price yet</em> : money(price, currency)}</td>
+                        <td className={pnl !== undefined && pnl >= 0 ? "profit" : "loss"}>
+                          {pnl === undefined ? <em>No price yet</em> : money(pnl, currency)}
+                        </td>
+                        <td className={pnlPct !== undefined && pnlPct >= 0 ? "profit" : "loss"}>
+                          {pnlPct === undefined ? <em>No price yet</em> : `${pnlPct.toFixed(2)}%`}
+                        </td>
+                        <td className="row-action">
+                          <button
+                            className="btn danger"
+                            type="button"
+                            onClick={() => removeHolding(h.ticker)}
+                            disabled={loading}
+                          >
+                            Remove
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </article>
+        </section>
       )}
-    </div>
+    </main>
   );
 }

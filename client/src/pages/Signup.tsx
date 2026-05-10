@@ -25,28 +25,43 @@ export default function Signup() {
   }
 
   return (
-    <div>
-      <h2>Sign up</h2>
-      <form onSubmit={onSubmit}>
-        <input
-          placeholder="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-        />
-        <br />
-        <input
-          placeholder="password"
-          type="password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-        />
-        <br />
-        <button type="submit">Create account</button>
-      </form>
+    <main className="auth-page">
+      <section className="auth-panel">
+        <p className="eyebrow">Start tracking</p>
+        <h1 className="auth-title">Create account</h1>
+        <p className="auth-copy">
+          Build a portfolio, save your holdings, and compare cost basis against current prices.
+        </p>
 
-      {err && <p>{err}</p>}
-      {msg && <p>{msg}</p>}
-      <Link to ="../login">Return to Login</Link>
-    </div>
+        <form className="auth-form" onSubmit={onSubmit}>
+          <label className="field">
+            <span>Email</span>
+            <input
+              placeholder="you@example.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
+          </label>
+
+          <label className="field">
+            <span>Password</span>
+            <input
+              placeholder="Choose a password"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+            />
+          </label>
+
+          <button className="btn" type="submit">Create account</button>
+        </form>
+
+        {err && <p className="error">{err}</p>}
+        {msg && <p className="notice">{msg}</p>}
+        <p className="auth-footer">
+          Already have an account? <Link to="/login">Return to login</Link>
+        </p>
+      </section>
+    </main>
   );
 }

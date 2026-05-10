@@ -15,10 +15,32 @@ export default function Dashboard() {
   }
 
   return (
-    <div>
-      <h2>Dashboard</h2>
-      <p>{user ? `Logged in as ${user.email}` : "Not logged in"}</p>
-      <button onClick={logout}>Logout</button>
-    </div>
+    <main className="page-shell">
+      <section className="page-heading">
+        <div>
+          <p className="eyebrow">Overview</p>
+          <h1 className="page-title">Dashboard</h1>
+          <p className="page-subtitle">
+            Your account hub for portfolio tracking and stock analysis.
+          </p>
+        </div>
+        <button className="btn secondary" onClick={logout}>Logout</button>
+      </section>
+
+      <section className="dashboard-grid">
+        <article className="metric-card">
+          <p className="metric-label">Session</p>
+          <p className="metric-value">{user ? "Signed in" : "Signed out"}</p>
+        </article>
+        <article className="metric-card">
+          <p className="metric-label">Account</p>
+          <p className="metric-value">{user?.email ?? "Not logged in"}</p>
+        </article>
+        <article className="metric-card">
+          <p className="metric-label">Next step</p>
+          <p className="metric-value">Review holdings</p>
+        </article>
+      </section>
+    </main>
   );
 }
