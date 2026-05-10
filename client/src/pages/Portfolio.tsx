@@ -145,11 +145,12 @@ export default function PortfolioPage() {
       setError("");
 
       try {
-        await requireUserId(); // ensures logged in
+        const userId = await requireUserId(); // ensures logged in
 
         const { data, error } = await supabase
           .from("portfolio_holdings")
           .select("ticker, qty, cost_price")
+          .eq("user_id", userId)
           .order("ticker", { ascending: true });
 
         if (error) throw new Error(error.message);
