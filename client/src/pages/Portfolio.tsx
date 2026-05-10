@@ -1,10 +1,50 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { supabase } from "../supabaseClient";
 import { Pie } from "react-chartjs-2";
-import { Chart as ChartJS, ArcElement, Tooltip, Legend } from "chart.js";
+import { Chart as ChartJS, ArcElement, Tooltip, Legend, type Plugin } from "chart.js";
 import "../css/Portfolio.css";
 
 ChartJS.register(ArcElement, Tooltip, Legend);
+
+const piePercentagePlugin: Plugin<"pie"> = {
+  id: "piePercentageLabels",
+  afterDatasetsDraw(chart) {
+    const dataset = chart.data.datasets[0];
+    const values = (dataset?.data ?? []).map((value) => Number(value));
+    const total = values.reduce((sum, value) => sum + value, 0);
+
+    if (!total) return;
+
+    const { ctx } = chart;
+    const meta = chart.getDatasetMeta(0);
+
+    ctx.save();
+    ctx.fillStyle = "#ffffff";
+    ctx.font = "800 13px Inter, system-ui, sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+
+    meta.data.forEach((element, index) => {
+      const value = values[index] ?? 0;
+      const pct = (value / total) * 100;
+      if (pct < 4) return;
+
+      const arc = element as any;
+      const { x, y, startAngle, endAngle, innerRadius, outerRadius } = arc.getProps(
+        ["x", "y", "startAngle", "endAngle", "innerRadius", "outerRadius"],
+        true
+      );
+      const angle = (startAngle + endAngle) / 2;
+      const radius = (innerRadius + outerRadius) / 2;
+      const labelX = x + Math.cos(angle) * radius;
+      const labelY = y + Math.sin(angle) * radius;
+
+      ctx.fillText(`${pct.toFixed(1)}%`, labelX, labelY);
+    });
+
+    ctx.restore();
+  },
+};
 
 type QuoteResponse = {
   ticker: string;
@@ -21,6 +61,9 @@ type Holding = {
 type HoldingWithQuote = Holding & {
   quote?: QuoteResponse;
 };
+
+type SortKey = "ticker" | "qty" | "costPrice" | "costBasis" | "price" | "pnl" | "pnlPct";
+type SortDirection = "asc" | "desc";
 
 function hashInt(str: string): number {
   let h = 0;
@@ -69,6 +112,8 @@ export default function PortfolioPage() {
   const [error, setError] = useState("");
   const [portfolio, setPortfolio] = useState<Holding[]>([]);
   const [quotes, setQuotes] = useState<Record<string, QuoteResponse>>({});
+  const [sortKey, setSortKey] = useState<SortKey>("ticker");
+  const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
 
   const API_BASE = useMemo(() => "http://localhost:8000", []);
 
@@ -273,6 +318,75 @@ export default function PortfolioPage() {
     quote: quotes[h.ticker],
   }));
 
+  function getSortValue(h: HoldingWithQuote, key: SortKey) {
+    const price = h.quote?.price;
+    const costBasis = h.qty * h.costPrice;
+    const marketValue = price !== undefined ? h.qty * price : undefined;
+    const pnl = marketValue !== undefined ? marketValue - costBasis : undefined;
+    const pnlPct = pnl !== undefined && costBasis > 0 ? (pnl / costBasis) * 100 : undefined;
+
+    switch (key) {
+      case "ticker":
+        return h.ticker;
+      case "qty":
+        return h.qty;
+      case "costPrice":
+        return h.costPrice;
+      case "costBasis":
+        return costBasis;
+      case "price":
+        return price;
+      case "pnl":
+        return pnl;
+      case "pnlPct":
+        return pnlPct;
+    }
+  }
+
+  function sortBy(key: SortKey) {
+    if (sortKey === key) {
+      setSortDirection((current) => (current === "asc" ? "desc" : "asc"));
+      return;
+    }
+
+    setSortKey(key);
+    setSortDirection("asc");
+  }
+
+  function SortHeader({ label, column }: { label: string; column: SortKey }) {
+    const active = sortKey === column;
+
+    return (
+      <button
+        className={`sort-header ${active ? "active" : ""}`}
+        type="button"
+        onClick={() => sortBy(column)}
+        aria-label={`Sort by ${label}`}
+      >
+        <span>{label}</span>
+        <span className={`sort-triangle ${active ? sortDirection : ""}`} />
+      </button>
+    );
+  }
+
+  const sortedHoldings = useMemo(() => {
+    return [...enriched].sort((a, b) => {
+      const aValue = getSortValue(a, sortKey);
+      const bValue = getSortValue(b, sortKey);
+
+      if (aValue === undefined && bValue === undefined) return 0;
+      if (aValue === undefined) return 1;
+      if (bValue === undefined) return -1;
+
+      const result =
+        typeof aValue === "string" && typeof bValue === "string"
+          ? aValue.localeCompare(bValue)
+          : Number(aValue) - Number(bValue);
+
+      return sortDirection === "asc" ? result : -result;
+    });
+  }, [enriched, sortDirection, sortKey]);
+
   const pieData = useMemo(() => {
     const slices = enriched
       .map((h) => {
@@ -438,6 +552,7 @@ export default function PortfolioPage() {
                       },
                     },
                   }}
+                  plugins={[piePercentagePlugin]}
                 />
               </div>
             )}
@@ -453,19 +568,19 @@ export default function PortfolioPage() {
               <table>
                 <thead>
                   <tr>
-                    <th>Ticker</th>
-                    <th>Qty</th>
-                    <th>Buy</th>
-                    <th>Cost basis</th>
-                    <th>Price</th>
-                    <th>P/L</th>
-                    <th>%</th>
+                    <th><SortHeader label="Ticker" column="ticker" /></th>
+                    <th><SortHeader label="Qty" column="qty" /></th>
+                    <th><SortHeader label="Buy" column="costPrice" /></th>
+                    <th><SortHeader label="Cost basis" column="costBasis" /></th>
+                    <th><SortHeader label="Price" column="price" /></th>
+                    <th><SortHeader label="P/L" column="pnl" /></th>
+                    <th><SortHeader label="%" column="pnlPct" /></th>
                     <th></th>
                   </tr>
                 </thead>
 
                 <tbody>
-                  {enriched.map((h) => {
+                  {sortedHoldings.map((h) => {
                     const price = h.quote?.price;
                     const marketValue = price !== undefined ? h.qty * price : undefined;
                     const costBasis = h.qty * h.costPrice;

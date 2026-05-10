@@ -123,6 +123,49 @@ th {
   text-transform: uppercase;
 }
 
+.sort-header {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  max-width: 100%;
+  border: 0;
+  padding: 0;
+  color: inherit;
+  background: transparent;
+  font: inherit;
+  font-weight: inherit;
+  text-transform: inherit;
+}
+
+.sort-header:hover,
+.sort-header.active {
+  color: var(--accent);
+}
+
+.sort-header span:first-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sort-triangle {
+  width: 0;
+  height: 0;
+  flex: 0 0 auto;
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+  border-bottom: 6px solid #9badbd;
+}
+
+.sort-header:hover .sort-triangle,
+.sort-header.active .sort-triangle {
+  border-bottom-color: var(--accent);
+}
+
+.sort-triangle.desc {
+  transform: rotate(180deg);
+}
+
 td {
   font-size: 0.9rem;
 }
