@@ -1,0 +1,149 @@
+.dcf-page {
+  padding-bottom: 72px;
+}
+
+.dcf-quote-panel {
+  margin-bottom: 18px;
+}
+
+.dcf-quote-form {
+  display: grid;
+  grid-template-columns: minmax(220px, 360px) auto;
+  gap: 12px;
+  align-items: end;
+}
+
+.dcf-quote-panel .error {
+  margin: 16px 0 0;
+}
+
+.dcf-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.dcf-layout {
+  display: grid;
+  grid-template-columns: minmax(300px, 420px) minmax(0, 1fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.dcf-inputs-panel,
+.dcf-output-panel {
+  min-width: 0;
+}
+
+.scenario-tabs {
+  display: inline-flex;
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-muted);
+}
+
+.scenario-tabs button {
+  min-height: 32px;
+  border: 0;
+  border-radius: 6px;
+  padding: 0 10px;
+  color: var(--muted);
+  background: transparent;
+  font-size: 0.85rem;
+  font-weight: 800;
+}
+
+.scenario-tabs button:hover {
+  color: var(--text);
+  background: #ffffff;
+}
+
+.dcf-input-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.dcf-inputs-panel .error {
+  margin: 16px 0 0;
+}
+
+.dcf-bridge {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.dcf-bridge div {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 14px;
+  background: #f8fbfc;
+}
+
+.dcf-bridge span {
+  display: block;
+  margin-bottom: 7px;
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.dcf-bridge strong {
+  display: block;
+  color: var(--text);
+  font-size: 1.1rem;
+  overflow-wrap: anywhere;
+}
+
+.dcf-bridge .bridge-total {
+  grid-column: 1 / -1;
+  border-color: #a8d8d3;
+  background: #ecf8f6;
+}
+
+.dcf-table-scroll table {
+  min-width: 520px;
+}
+
+.dcf-table-scroll th:nth-child(1),
+.dcf-table-scroll td:nth-child(1) {
+  width: 16%;
+}
+
+.dcf-table-scroll th:nth-child(2),
+.dcf-table-scroll td:nth-child(2),
+.dcf-table-scroll th:nth-child(3),
+.dcf-table-scroll td:nth-child(3),
+.dcf-table-scroll th:nth-child(4),
+.dcf-table-scroll td:nth-child(4) {
+  width: 28%;
+}
+
+@media (max-width: 980px) {
+  .dcf-summary-grid,
+  .dcf-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .dcf-quote-form,
+  .dcf-input-grid,
+  .dcf-bridge {
+    grid-template-columns: 1fr;
+  }
+
+  .scenario-tabs {
+    width: 100%;
+  }
+
+  .scenario-tabs button {
+    flex: 1;
+  }
+}

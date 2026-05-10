@@ -28,6 +28,9 @@ export default function Header() {
         <NavLink to="/analysis" className="header-link">
           Analysis
         </NavLink>
+        <NavLink to="/dcf" className="header-link">
+          DCF
+        </NavLink>
         <button className="header-action" type="button" onClick={handleLogout}>
           Logout
         </button>

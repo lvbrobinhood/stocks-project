@@ -4,6 +4,7 @@ import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import Portfolio from "./pages/Portfolio";
 import Analysis from "./pages/Analysis";
+import DCF from "./pages/DCF";
 import Header from "./pages/components/Header";
 import "./App.css";
 
@@ -19,6 +20,7 @@ export default function App() {
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/portfolio" element={<Portfolio />} />
         <Route path="/analysis" element={<Analysis />} />
+        <Route path="/dcf" element={<DCF />} />
       </Routes>
       
     </BrowserRouter>
