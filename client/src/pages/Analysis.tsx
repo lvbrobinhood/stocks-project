@@ -1,3 +1,4 @@
+import { API_BASE } from "../apiBase";
 import { useState } from "react";
 import { ChartCanvas, Chart, CandlestickSeries, LineSeries, XAxis, YAxis, CrossHairCursor } from "react-financial-charts";
 import { discontinuousTimeScaleProvider } from "react-financial-charts";
@@ -13,7 +14,7 @@ export default function Analysis() {
     setLoading(true);
     setError("");
     try {
-      const res = await fetch(`http://localhost:8000/stock-chart?ticker=${ticker}`);
+      const res = await fetch(`${API_BASE}/stock-chart?ticker=${encodeURIComponent(ticker)}`);
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
       const formatted = data.data.map((d: any) => ({

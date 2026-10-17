@@ -29,6 +29,7 @@ dist-ssr
 server/.venv/
 __pycache__/
 !server/.env.example
+!client/.env.example
 
 # Claude Code / agent tooling (kept local)
 .claude/

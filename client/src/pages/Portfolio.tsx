@@ -1,3 +1,4 @@
+import { API_BASE } from "../apiBase";
 import { useEffect, useMemo, useState, type CSSProperties, type FormEvent } from "react";
 import { supabase } from "../supabaseClient";
 import { useActiveTheme } from "../theme";
@@ -145,7 +146,6 @@ export default function PortfolioPage() {
   const activeTheme = useActiveTheme();
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
 
-  const API_BASE = useMemo(() => "http://localhost:8000", []);
 
   function parsePositiveNumber(input: string): number | null {
     const n = Number(input);

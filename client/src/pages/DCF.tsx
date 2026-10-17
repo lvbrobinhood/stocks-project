@@ -1,3 +1,4 @@
+import { API_BASE } from "../apiBase";
 import { useMemo, useState } from "react";
 import "../css/DCF.css";
 
@@ -16,7 +17,6 @@ type ProjectionRow = {
 
 type Scenario = "bear" | "base" | "bull";
 
-const API_BASE = "http://localhost:8000";
 
 function parseInput(value: string): number {
   const parsed = Number(value);
