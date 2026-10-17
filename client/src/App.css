@@ -13,6 +13,8 @@
   --loss-bg: #f5e6e4;
   --brass: #a8862e;
   --brass-soft: #f1e9d2;
+  --neon-gain: #00e05a;
+  --neon-loss: #ff1a4b;
   --focus: 0 0 0 3px rgba(168, 134, 46, 0.35);
 
   /* Legacy aliases used by pages not yet redesigned */
@@ -53,6 +55,8 @@
   --loss-bg: #352020;
   --brass: #d3b05a;
   --brass-soft: #352e1c;
+  --neon-gain: #39ff14;
+  --neon-loss: #ff2d55;
   --focus: 0 0 0 3px rgba(211, 176, 90, 0.4);
   --accent-dark: #ffffff;
   color-scheme: dark;

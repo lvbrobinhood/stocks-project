@@ -1,50 +1,6 @@
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type CSSProperties, type FormEvent } from "react";
 import { supabase } from "../supabaseClient";
-import { Pie } from "react-chartjs-2";
-import { Chart as ChartJS, ArcElement, Tooltip, Legend, type Plugin } from "chart.js";
 import "../css/Portfolio.css";
-
-ChartJS.register(ArcElement, Tooltip, Legend);
-
-const piePercentagePlugin: Plugin<"pie"> = {
-  id: "piePercentageLabels",
-  afterDatasetsDraw(chart) {
-    const dataset = chart.data.datasets[0];
-    const values = (dataset?.data ?? []).map((value) => Number(value));
-    const total = values.reduce((sum, value) => sum + value, 0);
-
-    if (!total) return;
-
-    const { ctx } = chart;
-    const meta = chart.getDatasetMeta(0);
-
-    ctx.save();
-    ctx.fillStyle = "#ffffff";
-    ctx.font = "800 13px Inter, system-ui, sans-serif";
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-
-    meta.data.forEach((element, index) => {
-      const value = values[index] ?? 0;
-      const pct = (value / total) * 100;
-      if (pct < 4) return;
-
-      const arc = element as any;
-      const { x, y, startAngle, endAngle, innerRadius, outerRadius } = arc.getProps(
-        ["x", "y", "startAngle", "endAngle", "innerRadius", "outerRadius"],
-        true
-      );
-      const angle = (startAngle + endAngle) / 2;
-      const radius = (innerRadius + outerRadius) / 2;
-      const labelX = x + Math.cos(angle) * radius;
-      const labelY = y + Math.sin(angle) * radius;
-
-      ctx.fillText(`${pct.toFixed(1)}%`, labelX, labelY);
-    });
-
-    ctx.restore();
-  },
-};
 
 type QuoteResponse = {
   ticker: string;
@@ -62,46 +18,46 @@ type HoldingWithQuote = Holding & {
   quote?: QuoteResponse;
 };
 
-type SortKey = "ticker" | "qty" | "costPrice" | "costBasis" | "price" | "pnl" | "pnlPct";
+type SortKey = "ticker" | "qty" | "costPrice" | "costBasis" | "price" | "marketValue" | "pnl" | "pnlPct";
 type SortDirection = "asc" | "desc";
 
-function hashInt(str: string): number {
-  let h = 0;
-  for (let i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) | 0;
-  return Math.abs(h);
-}
-
-function circularHueDistance(a: number, b: number) {
-  const d = Math.abs(a - b) % 360;
-  return Math.min(d, 360 - d);
-}
-
-function generateDistinctColors(labels: string[]) {
-  const usedHues: number[] = [];
-
-  return labels.map((label) => {
-    const seed = hashInt(label);
-    let hue = seed % 360;
-    const sat = 75;
-    const light = 48 + (seed % 14);
-    const minGap = 28;
-    const step = 137.508;
-
-    while (usedHues.some((h) => circularHueDistance(hue, h) < minGap)) {
-      hue = (hue + step) % 360;
-    }
-
-    usedHues.push(hue);
-
-    return {
-      bg: `hsl(${hue} ${sat}% ${light}% / 0.78)`,
-      border: `hsl(${hue} ${sat}% ${Math.max(light - 18, 25)}% / 1)`,
-    };
-  });
-}
+const numberFormat = new Intl.NumberFormat("en-US", {
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+});
 
 function money(value: number, currency: string) {
-  return `${value.toFixed(2)}${currency ? ` ${currency}` : ""}`;
+  return `${numberFormat.format(value)}${currency ? ` ${currency}` : ""}`;
+}
+
+// Accounting convention: negatives in parentheses.
+function signed(value: number, currency: string) {
+  return value < 0 ? `(${money(Math.abs(value), currency)})` : money(value, currency);
+}
+
+function signedPct(value: number) {
+  return value < 0 ? `(${Math.abs(value).toFixed(2)}%)` : `${value.toFixed(2)}%`;
+}
+
+const PNL_SCALE_MAX = 500;
+const PCT_SCALE_MAX = 30;
+
+/**
+ * Colour for a gain/loss cell: neutral ink at zero, neon red at -max and
+ * neon green at +max. Mixed in CSS so the result follows the active theme.
+ */
+function scaleColor(value: number | undefined, max: number): CSSProperties | undefined {
+  if (value === undefined || value === 0) return undefined;
+  const t = Math.min(Math.abs(value) / max, 1);
+  const strength = Math.round(25 + t * 75);
+  const neon = value < 0 ? "var(--neon-loss)" : "var(--neon-gain)";
+  return { color: `color-mix(in oklab, var(--ink), ${neon} ${strength}%)` };
+}
+
+function statementDate() {
+  return new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric" }).format(
+    new Date()
+  );
 }
 
 export default function PortfolioPage() {
@@ -110,6 +66,7 @@ export default function PortfolioPage() {
   const [costPrice, setCostPrice] = useState<string>("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
   const [portfolio, setPortfolio] = useState<Holding[]>([]);
   const [quotes, setQuotes] = useState<Record<string, QuoteResponse>>({});
   const [sortKey, setSortKey] = useState<SortKey>("ticker");
@@ -239,9 +196,9 @@ export default function PortfolioPage() {
 
     setLoading(true);
     setError("");
+    setNotice("");
 
     try {
-      const quote = await fetchQuote(t);
       const existing = portfolio.find((h) => h.ticker === t);
 
       const updatedHolding: Holding = existing
@@ -262,10 +219,17 @@ export default function PortfolioPage() {
         return copy;
       });
 
-      setQuotes((prev) => ({ ...prev, [t]: quote }));
       setTicker("");
       setQty("");
       setCostPrice("");
+
+      // The price is a nice-to-have; the holding is saved either way.
+      try {
+        const quote = await fetchQuote(t);
+        setQuotes((prev) => ({ ...prev, [t]: quote }));
+      } catch {
+        setNotice(`${t} saved. No price yet, so refresh prices once the market data service is up.`);
+      }
     } catch (e: any) {
       setError(e?.message ?? "Something went wrong.");
     } finally {
@@ -278,24 +242,28 @@ export default function PortfolioPage() {
 
     setLoading(true);
     setError("");
+    setNotice("");
 
-    try {
-      const nextQuotes: Record<string, QuoteResponse> = { ...quotes };
-      for (const h of portfolio) {
-        const q = await fetchQuote(h.ticker);
-        nextQuotes[h.ticker] = q;
-      }
-      setQuotes(nextQuotes);
-    } catch (e: any) {
-      setError(e?.message ?? "Failed to refresh prices.");
-    } finally {
-      setLoading(false);
+    const results = await Promise.allSettled(portfolio.map((h) => fetchQuote(h.ticker)));
+    const nextQuotes: Record<string, QuoteResponse> = { ...quotes };
+    let failed = 0;
+    for (const res of results) {
+      if (res.status === "fulfilled") nextQuotes[res.value.ticker] = res.value;
+      else failed += 1;
     }
+    setQuotes(nextQuotes);
+    if (failed === portfolio.length) {
+      setError("Could not reach the market data service. Prices were not updated.");
+    } else if (failed > 0) {
+      setNotice(`${failed} ${failed === 1 ? "price" : "prices"} could not be updated.`);
+    }
+    setLoading(false);
   }
 
   async function removeHolding(t: string) {
     setLoading(true);
     setError("");
+    setNotice("");
 
     try {
       await deleteHoldingFromSupabase(t);
@@ -336,6 +304,8 @@ export default function PortfolioPage() {
         return costBasis;
       case "price":
         return price;
+      case "marketValue":
+        return marketValue;
       case "pnl":
         return pnl;
       case "pnlPct":
@@ -387,29 +357,19 @@ export default function PortfolioPage() {
     });
   }, [enriched, sortDirection, sortKey]);
 
-  const pieData = useMemo(() => {
+  const allocation = useMemo(() => {
     const slices = enriched
       .map((h) => {
         const price = h.quote?.price;
         if (price === undefined) return null;
-        return { label: h.ticker, value: h.qty * price };
+        return { ticker: h.ticker, value: h.qty * price };
       })
-      .filter(Boolean) as { label: string; value: number }[];
+      .filter(Boolean) as { ticker: string; value: number }[];
 
-    slices.sort((a, b) => a.label.localeCompare(b.label));
-    const colors = generateDistinctColors(slices.map((s) => s.label));
+    const total = slices.reduce((sum, s) => sum + s.value, 0);
+    slices.sort((a, b) => b.value - a.value);
 
-    return {
-      labels: slices.map((s) => s.label),
-      datasets: [
-        {
-          data: slices.map((s) => s.value),
-          backgroundColor: colors.map((c) => c.bg),
-          borderColor: colors.map((c) => c.border),
-          borderWidth: 0,
-        },
-      ],
-    };
+    return slices.map((s) => ({ ...s, share: total > 0 ? (s.value / total) * 100 : 0 }));
   }, [enriched]);
 
   const pricedHoldings = enriched.filter((h) => h.quote?.price !== undefined);
@@ -430,152 +390,96 @@ export default function PortfolioPage() {
     addHolding();
   }
 
+  const hasQuotes = pricedHoldings.length > 0;
+  const totalTone = totalPnL === null ? "" : totalPnL < 0 ? "loss" : "gain";
+
   return (
     <main className="page-shell portfolio-page">
-      <section className="page-heading">
+      <section className="statement-heading">
         <div>
-          <p className="eyebrow">Holdings</p>
-          <h1 className="page-title">Portfolio tracker</h1>
-          <p className="page-subtitle">
-            Add positions, refresh market prices, and watch allocation and return move together.
+          <h1 className="page-title">Portfolio</h1>
+          <p className="statement-meta">
+            {portfolio.length === 0
+              ? "No positions yet"
+              : `${portfolio.length} ${portfolio.length === 1 ? "position" : "positions"}, priced ${statementDate()}`}
+            {missingQuoteCount > 0 && ` (${missingQuoteCount} without a price)`}
           </p>
+        </div>
+        <button
+          className="btn secondary"
+          type="button"
+          onClick={refreshAll}
+          disabled={loading || portfolio.length === 0}
+        >
+          {loading ? "Refreshing" : "Refresh prices"}
+        </button>
+      </section>
+
+      <section className="totals" aria-label="Portfolio totals">
+        <div className="total">
+          <span className="total-label">Market value</span>
+          <span className="total-value">{hasQuotes ? money(totalMarketValue, currency) : "—"}</span>
+        </div>
+        <div className="total">
+          <span className="total-label">Paid</span>
+          <span className="total-value">{money(totalCostBasis, currency)}</span>
+        </div>
+        <div className="total">
+          <span className="total-label">Gain / loss</span>
+          <span className={`total-value ${totalTone}`}>
+            {totalPnL === null ? "—" : signed(totalPnL, currency)}
+            {totalPnLPct !== null && <small>{signedPct(totalPnLPct)}</small>}
+          </span>
         </div>
       </section>
 
-      <section className="portfolio-summary">
-        <article className="summary-card">
-          <p className="summary-label">Market value</p>
-          <p className="summary-value">{money(totalMarketValue, currency)}</p>
-          <p className="summary-note">
-            {missingQuoteCount > 0 ? `${missingQuoteCount} quote missing` : "All quotes loaded"}
-          </p>
-        </article>
-        <article className="summary-card">
-          <p className="summary-label">Cost basis</p>
-          <p className="summary-value">{money(totalCostBasis, currency)}</p>
-          <p className="summary-note">{portfolio.length} holdings saved</p>
-        </article>
-        <article className="summary-card">
-          <p className="summary-label">Total P/L</p>
-          <p className={`summary-value ${totalPnL !== null && totalPnL >= 0 ? "profit" : "loss"}`}>
-            {totalPnL === null ? "Waiting for quotes" : money(totalPnL, currency)}
-          </p>
-          <p className="summary-note">
-            {totalPnLPct === null ? "Refresh prices to calculate" : `${totalPnLPct.toFixed(2)}%`}
-          </p>
-        </article>
-      </section>
+      <form className="add-row" onSubmit={onSubmit}>
+        <span className="add-row-title">Add a position</span>
+        <label className="field">
+          <span>Ticker</span>
+          <input value={ticker} onChange={(e) => setTicker(e.target.value.toUpperCase())} placeholder="AAPL" />
+        </label>
+        <label className="field">
+          <span>Quantity</span>
+          <input value={qty} onChange={(e) => setQty(e.target.value)} placeholder="10" inputMode="decimal" />
+        </label>
+        <label className="field">
+          <span>Price paid</span>
+          <input
+            value={costPrice}
+            onChange={(e) => setCostPrice(e.target.value)}
+            placeholder="185.50"
+            inputMode="decimal"
+          />
+        </label>
+        <button className="btn" type="submit" disabled={loading}>
+          {loading ? "Saving" : "Add"}
+        </button>
+      </form>
 
-      <section className="panel portfolio-controls">
-        <form className="form" onSubmit={onSubmit}>
-          <label className="field">
-            <span>Ticker</span>
-            <input
-              className="ticker-input"
-              value={ticker}
-              onChange={(e) => setTicker(e.target.value)}
-              placeholder="AAPL"
-            />
-          </label>
-
-          <label className="field">
-            <span>Quantity</span>
-            <input
-              className="qty-input"
-              value={qty}
-              onChange={(e) => setQty(e.target.value)}
-              placeholder="10"
-              inputMode="decimal"
-            />
-          </label>
-
-          <label className="field">
-            <span>Cost price</span>
-            <input
-              className="cost-input"
-              value={costPrice}
-              onChange={(e) => setCostPrice(e.target.value)}
-              placeholder="185.50"
-              inputMode="decimal"
-            />
-          </label>
-
-          <button className="btn" type="submit" disabled={loading}>
-            {loading ? "Adding..." : "Add holding"}
-          </button>
-
-          <button
-            className="btn secondary"
-            type="button"
-            onClick={refreshAll}
-            disabled={loading || portfolio.length === 0}
-          >
-            {loading ? "Refreshing..." : "Refresh prices"}
-          </button>
-        </form>
-
-        {error && (
-          <div className="error">
-            <strong>Error:</strong> {error}
-          </div>
-        )}
-      </section>
+      {error && <p className="error">{error}</p>}
+      {notice && <p className="notice">{notice}</p>}
 
       {portfolio.length === 0 ? (
-        <div className="empty-state">No holdings yet. Add your first position above.</div>
+        <div className="empty-state">
+          Your statement is empty. Add a ticker, how many you hold, and what you paid per share.
+        </div>
       ) : (
-        <section className="portfolio-grid">
-          <article className="panel allocation-panel">
-            <div className="section-heading">
-              <h2>Allocation</h2>
-              <p>By loaded market value</p>
-            </div>
-
-            {pieData.labels.length === 0 ? (
-              <div className="empty-state compact">Refresh prices to display the chart.</div>
-            ) : (
-              <div className="pie-wrap">
-                <Pie
-                  data={pieData}
-                  options={{
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                      legend: { position: "bottom" },
-                      tooltip: {
-                        callbacks: {
-                          label: (ctx) => {
-                            const v = Number(ctx.raw ?? 0);
-                            return `${ctx.label}: ${money(v, currency)}`;
-                          },
-                        },
-                      },
-                    },
-                  }}
-                  plugins={[piePercentagePlugin]}
-                />
-              </div>
-            )}
-          </article>
-
-          <article className="panel holdings-panel">
-            <div className="section-heading">
-              <h2>Positions</h2>
-              <p>{portfolio.length} total</p>
-            </div>
-
+        <>
+          <section className="ledger" aria-label="Holdings">
             <div className="table-scroll">
               <table>
                 <thead>
                   <tr>
-                    <th><SortHeader label="Ticker" column="ticker" /></th>
-                    <th><SortHeader label="Qty" column="qty" /></th>
-                    <th><SortHeader label="Buy" column="costPrice" /></th>
-                    <th><SortHeader label="Cost basis" column="costBasis" /></th>
-                    <th><SortHeader label="Price" column="price" /></th>
-                    <th><SortHeader label="P/L" column="pnl" /></th>
-                    <th><SortHeader label="%" column="pnlPct" /></th>
-                    <th></th>
+                    <th scope="col"><SortHeader label="Stock" column="ticker" /></th>
+                    <th scope="col" className="num"><SortHeader label="Qty" column="qty" /></th>
+                    <th scope="col" className="num"><SortHeader label="Buy Price" column="costPrice" /></th>
+                    <th scope="col" className="num"><SortHeader label="Total Cost Basis" column="costBasis" /></th>
+                    <th scope="col" className="num"><SortHeader label="Current Price" column="price" /></th>
+                    <th scope="col" className="num"><SortHeader label="Total Value" column="marketValue" /></th>
+                    <th scope="col" className="num"><SortHeader label="P/L" column="pnl" /></th>
+                    <th scope="col" className="num"><SortHeader label="%" column="pnlPct" /></th>
+                    <th scope="col" className="row-action"><span className="visually-hidden">Remove</span></th>
                   </tr>
                 </thead>
 
@@ -590,16 +494,17 @@ export default function PortfolioPage() {
 
                     return (
                       <tr key={h.ticker}>
-                        <td><strong>{h.ticker}</strong></td>
-                        <td>{h.qty}</td>
-                        <td>{h.costPrice.toFixed(2)}</td>
-                        <td>{money(costBasis, currency)}</td>
-                        <td>{price === undefined ? <em>No price yet</em> : money(price, currency)}</td>
-                        <td className={pnl !== undefined && pnl >= 0 ? "profit" : "loss"}>
-                          {pnl === undefined ? <em>No price yet</em> : money(pnl, currency)}
+                        <th scope="row">{h.ticker}</th>
+                        <td className="num">{h.qty}</td>
+                        <td className="num">{money(h.costPrice, "")}</td>
+                        <td className="num">{money(costBasis, currency)}</td>
+                        <td className="num">{price === undefined ? <em>No price</em> : money(price, currency)}</td>
+                        <td className="num">{marketValue === undefined ? <em>—</em> : money(marketValue, currency)}</td>
+                        <td className="num" style={scaleColor(pnl, PNL_SCALE_MAX)}>
+                          {pnl === undefined ? <em>—</em> : signed(pnl, currency)}
                         </td>
-                        <td className={pnlPct !== undefined && pnlPct >= 0 ? "profit" : "loss"}>
-                          {pnlPct === undefined ? <em>No price yet</em> : `${pnlPct.toFixed(2)}%`}
+                        <td className="num" style={scaleColor(pnlPct, PCT_SCALE_MAX)}>
+                          {pnlPct === undefined ? <em>—</em> : signedPct(pnlPct)}
                         </td>
                         <td className="row-action">
                           <button
@@ -607,20 +512,75 @@ export default function PortfolioPage() {
                             type="button"
                             onClick={() => removeHolding(h.ticker)}
                             disabled={loading}
-                            title={`Remove ${h.ticker}`}
                             aria-label={`Remove ${h.ticker}`}
                           >
-                            X
+                            Remove
                           </button>
                         </td>
                       </tr>
                     );
                   })}
                 </tbody>
+
+                <tfoot>
+                  <tr>
+                    <th scope="row">Total</th>
+                    <td />
+                    <td />
+                    <td className="num">{money(totalCostBasis, currency)}</td>
+                    <td />
+                    <td className="num">{hasQuotes ? money(totalMarketValue, currency) : ""}</td>
+                    <td className="num" style={scaleColor(totalPnL ?? undefined, PNL_SCALE_MAX)}>
+                      {totalPnL === null ? "" : signed(totalPnL, currency)}
+                    </td>
+                    <td className="num" style={scaleColor(totalPnLPct ?? undefined, PCT_SCALE_MAX)}>
+                      {totalPnLPct === null ? "" : signedPct(totalPnLPct)}
+                    </td>
+                    <td />
+                  </tr>
+                </tfoot>
               </table>
             </div>
-          </article>
-        </section>
+          </section>
+
+          <section className="allocation" aria-label="Allocation">
+            <div className="section-heading">
+              <h2>Allocation</h2>
+              <p>Share of market value</p>
+            </div>
+
+            {allocation.length === 0 ? (
+              <div className="empty-state compact">Refresh prices to see how the portfolio is split.</div>
+            ) : (
+              <>
+                <div className="allocation-bar" role="img" aria-label="Allocation by holding">
+                  {allocation.map((a, i) => (
+                    <span
+                      key={a.ticker}
+                      className="allocation-segment"
+                      style={{ width: `${a.share}%`, opacity: 1 - (i / allocation.length) * 0.75 }}
+                      title={`${a.ticker} ${a.share.toFixed(1)}%`}
+                    />
+                  ))}
+                </div>
+                <ol className="allocation-list">
+                  {allocation.map((a, i) => (
+                    <li key={a.ticker}>
+                      <span
+                        className="allocation-swatch"
+                        style={{ opacity: 1 - (i / allocation.length) * 0.75 }}
+                        aria-hidden="true"
+                      />
+                      <span className="allocation-ticker">{a.ticker}</span>
+                      <span className="allocation-share">{a.share.toFixed(1)}%</span>
+                      <span className="allocation-value">{money(a.value, currency)}</span>
+                    </li>
+                  ))}
+                </ol>
+              </>
+            )}
+          </section>
+        </>
       )}
     </main>
   );
