@@ -24,3 +24,8 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Python
+server/.venv/
+__pycache__/
+!server/.env.example
