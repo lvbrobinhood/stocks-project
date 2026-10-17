@@ -1,0 +1,391 @@
+.landing {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.landing main {
+  width: min(1120px, calc(100% - 40px));
+  margin: 0 auto;
+  flex: 1;
+}
+
+/* Top bar */
+.landing-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: min(1120px, calc(100% - 40px));
+  margin: 0 auto;
+  padding: 22px 0;
+}
+
+.landing-brand {
+  color: var(--ink);
+  font-size: 1.1rem;
+  font-weight: 700;
+  font-variation-settings: "wdth" 118;
+  text-decoration: none;
+}
+
+.landing-nav {
+  display: flex;
+  align-items: center;
+  gap: 22px;
+}
+
+.landing-nav a {
+  color: var(--ink);
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.landing-nav a:hover {
+  text-decoration: underline;
+}
+
+.landing-nav-primary {
+  border-bottom: 2px solid var(--brass);
+  padding-bottom: 2px;
+}
+
+.landing-nav-primary:hover {
+  text-decoration: none !important;
+  border-bottom-color: var(--ink);
+}
+
+/* Theme toggle (shared look with the app header) */
+.theme-toggle {
+  display: inline-grid;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  border: 1px solid var(--rule-strong);
+  border-radius: 4px;
+  padding: 0;
+  color: var(--ink);
+  background: transparent;
+}
+
+.theme-toggle:hover {
+  background: var(--paper-deep);
+}
+
+.theme-toggle svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* Hero */
+.hero {
+  display: grid;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
+  gap: clamp(32px, 6vw, 80px);
+  align-items: center;
+  padding: clamp(40px, 8vh, 96px) 0 clamp(48px, 8vh, 88px);
+  border-top: 1px solid var(--rule-strong);
+}
+
+.hero-copy h1 {
+  margin: 0;
+  max-width: 11ch;
+  font-size: clamp(2.4rem, 4.8vw, 4rem);
+  font-weight: 800;
+  font-variation-settings: "wdth" 118;
+  letter-spacing: -0.02em;
+  line-height: 0.98;
+  text-wrap: balance;
+}
+
+.hero-copy p {
+  max-width: 44ch;
+  margin: 24px 0 0;
+  color: var(--ink-soft);
+  font-size: 1.08rem;
+  line-height: 1.6;
+}
+
+.hero-actions {
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  margin-top: 32px;
+}
+
+.hero-actions .btn {
+  display: inline-flex;
+  align-items: center;
+  min-height: 46px;
+  padding: 0 22px;
+  text-decoration: none;
+}
+
+.hero-signin {
+  color: var(--ink);
+  font-weight: 500;
+}
+
+/* The statement */
+.statement {
+  margin: 0;
+  border: 1px solid var(--rule-strong);
+  border-radius: 4px;
+  padding: 22px 24px 18px;
+  background: var(--surface);
+}
+
+.statement figcaption {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 14px;
+  color: var(--ink-soft);
+  font-size: 0.9rem;
+}
+
+.statement figcaption span:first-child {
+  color: var(--ink);
+  font-weight: 700;
+  font-variation-settings: "wdth" 112;
+}
+
+.statement table {
+  width: 100%;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+
+.statement th,
+.statement td {
+  padding: 9px 0 9px 14px;
+  text-align: left;
+  vertical-align: baseline;
+}
+
+.statement th:first-child,
+.statement td:first-child {
+  padding-left: 0;
+}
+
+.statement .num {
+  text-align: right;
+}
+
+.statement thead tr {
+  border-bottom: 1px solid var(--ink);
+}
+
+.statement thead th {
+  color: var(--ink-soft);
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.statement tbody th {
+  font-weight: 600;
+}
+
+.statement tbody tr {
+  border-bottom: 1px solid var(--rule);
+}
+
+.statement tbody tr:last-child {
+  border-bottom: 0;
+}
+
+/* Accounting double rule under the total */
+.statement tfoot tr {
+  position: relative;
+  border-top: 1px solid var(--ink);
+}
+
+.statement tfoot th,
+.statement tfoot td {
+  padding-top: 12px;
+  padding-bottom: 4px;
+  border-bottom: 4px double var(--brass);
+  font-weight: 700;
+}
+
+.statement tfoot td small {
+  display: block;
+  margin-top: 2px;
+  font-size: 0.78rem;
+  font-weight: 500;
+}
+
+.statement .gain {
+  color: var(--gain);
+}
+
+.statement .loss {
+  color: var(--loss);
+}
+
+.statement-note {
+  margin: 14px 0 0;
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+/* One load-time moment: the double rule draws in. */
+@media (prefers-reduced-motion: no-preference) {
+  .statement tfoot th,
+  .statement tfoot td {
+    background: linear-gradient(var(--brass), var(--brass)) no-repeat left bottom / 0% 4px;
+    border-bottom-color: transparent;
+    animation: rule-in 900ms cubic-bezier(0.2, 0.7, 0.2, 1) 350ms forwards;
+  }
+
+  @keyframes rule-in {
+    to {
+      border-bottom-color: var(--brass);
+    }
+  }
+}
+
+/* Feature list as statement line items */
+.features {
+  border-top: 1px solid var(--rule-strong);
+}
+
+.feature-row {
+  display: grid;
+  grid-template-columns: minmax(140px, 1.2fr) minmax(0, 3.4fr) 120px;
+  gap: clamp(20px, 4vw, 56px);
+  align-items: center;
+  padding: 30px 0;
+  border-bottom: 1px solid var(--rule);
+}
+
+.feature-row:last-child {
+  border-bottom: 1px solid var(--rule-strong);
+}
+
+.feature-row h2 {
+  margin: 0;
+  font-size: 1.35rem;
+  font-weight: 700;
+  font-variation-settings: "wdth" 112;
+  letter-spacing: -0.01em;
+}
+
+.feature-row p {
+  max-width: 62ch;
+  margin: 0;
+  color: var(--ink-soft);
+  line-height: 1.6;
+}
+
+.glyph {
+  width: 120px;
+  height: 48px;
+  justify-self: end;
+  fill: var(--rule-strong);
+  stroke: var(--rule-strong);
+  stroke-width: 1;
+}
+
+.glyph line {
+  stroke: var(--rule);
+}
+
+.glyph .ma {
+  fill: none;
+  stroke: var(--brass);
+  stroke-width: 1.5;
+}
+
+.glyph .candle.gain {
+  fill: var(--gain);
+  stroke: var(--gain);
+}
+
+.glyph .candle.loss {
+  fill: var(--loss);
+  stroke: var(--loss);
+}
+
+.glyph.formula {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  color: var(--ink);
+  font-size: 0.9rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.frac {
+  display: inline-grid;
+  text-align: center;
+}
+
+.frac span:first-child {
+  border-bottom: 1px solid var(--ink);
+  padding-bottom: 2px;
+}
+
+.frac span:last-child {
+  padding-top: 2px;
+}
+
+/* Footer */
+.landing-foot {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  width: min(1120px, calc(100% - 40px));
+  margin: 0 auto;
+  padding: 28px 0 36px;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+@media (max-width: 880px) {
+  .hero {
+    grid-template-columns: 1fr;
+    padding-top: 40px;
+  }
+
+  .feature-row {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .glyph {
+    justify-self: start;
+    margin-top: 6px;
+  }
+}
+
+@media (max-width: 520px) {
+  .statement {
+    padding: 16px;
+  }
+
+  .statement th,
+  .statement td {
+    padding-left: 8px;
+    font-size: 0.9rem;
+  }
+
+  .statement thead th:nth-child(2),
+  .statement tbody td:nth-child(2),
+  .statement tfoot td:nth-child(2) {
+    display: none;
+  }
+
+  .hero-actions {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 14px;
+  }
+
+  .landing-foot {
+    flex-direction: column;
+  }
+}

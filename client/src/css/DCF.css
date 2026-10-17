@@ -58,7 +58,7 @@
 
 .scenario-tabs button:hover {
   color: var(--text);
-  background: #ffffff;
+  background: var(--surface);
 }
 
 .dcf-input-grid {
@@ -82,7 +82,7 @@
   border: 1px solid var(--border);
   border-radius: 8px;
   padding: 14px;
-  background: #f8fbfc;
+  background: var(--paper-deep);
 }
 
 .dcf-bridge span {
@@ -103,8 +103,8 @@
 
 .dcf-bridge .bridge-total {
   grid-column: 1 / -1;
-  border-color: #a8d8d3;
-  background: #ecf8f6;
+  border-color: var(--brass);
+  background: var(--brass-soft);
 }
 
 .dcf-table-scroll table {

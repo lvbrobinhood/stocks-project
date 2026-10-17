@@ -1,5 +1,6 @@
 import { NavLink, useNavigate } from "react-router-dom";
 import { supabase } from "../../supabaseClient";
+import ThemeToggle from "./ThemeToggle";
 import "./Header.css";
 
 export default function Header() {
@@ -31,6 +32,7 @@ export default function Header() {
         <NavLink to="/dcf" className="header-link">
           DCF
         </NavLink>
+        <ThemeToggle />
         <button className="header-action" type="button" onClick={handleLogout}>
           Logout
         </button>
