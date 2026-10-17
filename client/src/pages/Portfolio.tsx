@@ -72,31 +72,23 @@ function hashInt(str: string): number {
   return Math.abs(h);
 }
 
-function circularHueDistance(a: number, b: number) {
-  const d = Math.abs(a - b) % 360;
-  return Math.min(d, 360 - d);
-}
-
+/**
+ * Colours by slice position: hues step around the wheel by the golden angle,
+ * so neighbouring slices are always ~137° apart, and lightness alternates to
+ * separate them further. The starting hue is anchored to the largest holding.
+ */
 function generateDistinctColors(labels: string[]) {
-  const usedHues: number[] = [];
+  const base = labels.length ? hashInt(labels[0]) % 360 : 0;
+  const goldenAngle = 137.508;
 
-  return labels.map((label) => {
-    const seed = hashInt(label);
-    let hue = seed % 360;
-    const sat = 75;
-    const light = 48 + (seed % 14);
-    const minGap = 28;
-    const step = 137.508;
-
-    while (usedHues.some((h) => circularHueDistance(hue, h) < minGap)) {
-      hue = (hue + step) % 360;
-    }
-
-    usedHues.push(hue);
+  return labels.map((_, i) => {
+    const hue = (base + i * goldenAngle) % 360;
+    const light = i % 2 === 0 ? 46 : 60;
+    const sat = i % 2 === 0 ? 70 : 78;
 
     return {
-      bg: `hsl(${hue} ${sat}% ${light}% / 0.78)`,
-      border: `hsl(${hue} ${sat}% ${Math.max(light - 18, 25)}% / 1)`,
+      bg: `hsl(${hue.toFixed(1)} ${sat}% ${light}%)`,
+      border: `hsl(${hue.toFixed(1)} ${sat}% ${Math.max(light - 20, 22)}%)`,
     };
   });
 }
@@ -110,13 +102,12 @@ function money(value: number, currency: string) {
   return `${numberFormat.format(value)}${currency ? ` ${currency}` : ""}`;
 }
 
-// Accounting convention: negatives in parentheses.
 function signed(value: number, currency: string) {
-  return value < 0 ? `(${money(Math.abs(value), currency)})` : money(value, currency);
+  return value < 0 ? `-${money(Math.abs(value), currency)}` : money(value, currency);
 }
 
 function signedPct(value: number) {
-  return value < 0 ? `(${Math.abs(value).toFixed(2)}%)` : `${value.toFixed(2)}%`;
+  return value < 0 ? `-${Math.abs(value).toFixed(2)}%` : `${value.toFixed(2)}%`;
 }
 
 const PNL_SCALE_MAX = 500;
@@ -446,7 +437,7 @@ export default function PortfolioPage() {
       })
       .filter(Boolean) as { label: string; value: number }[];
 
-    slices.sort((a, b) => a.label.localeCompare(b.label));
+    slices.sort((a, b) => a.value - b.value);
     const colors = generateDistinctColors(slices.map((s) => s.label));
 
     return {

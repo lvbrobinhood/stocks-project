@@ -153,6 +153,7 @@
 
 .ledger tfoot tr {
   border-top: 1px solid var(--ink);
+  background: var(--brass-soft);
 }
 
 .ledger tfoot th,
