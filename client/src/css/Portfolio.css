@@ -94,10 +94,6 @@
 }
 
 /* Ledger table */
-.ledger {
-  margin-top: 8px;
-}
-
 .table-scroll {
   width: 100%;
   overflow-x: auto;
@@ -105,14 +101,14 @@
 
 .ledger table {
   width: 100%;
-  min-width: 860px;
+  min-width: 680px;
   border-collapse: collapse;
   font-variant-numeric: tabular-nums;
 }
 
 .ledger th,
 .ledger td {
-  padding: 12px 0 12px 16px;
+  padding: 12px 0 12px 12px;
   text-align: left;
   white-space: nowrap;
 }
@@ -229,14 +225,27 @@
   text-underline-offset: 0.18em;
 }
 
+/* Outranks the global button:disabled opacity so disabled buttons stay hidden. */
+.ledger .remove-button:disabled {
+  opacity: 0;
+}
+
 .ledger tbody tr:hover .remove-button,
 .remove-button:focus-visible {
   opacity: 1;
 }
 
-/* Allocation */
-.allocation {
-  margin-top: 40px;
+/* Pie on the left, ledger on the right */
+.portfolio-grid {
+  display: grid;
+  grid-template-columns: minmax(280px, 340px) minmax(0, 1fr);
+  gap: 32px;
+  align-items: start;
+  margin-top: 8px;
+}
+
+.ledger {
+  min-width: 0;
 }
 
 .section-heading {
@@ -244,13 +253,13 @@
   align-items: baseline;
   justify-content: space-between;
   gap: 16px;
-  padding-bottom: 12px;
+  padding: 6px 0 10px;
   border-bottom: 1px solid var(--ink);
 }
 
 .section-heading h2 {
   margin: 0;
-  font-size: 1.25rem;
+  font-size: 1.1rem;
   font-weight: 700;
   font-variation-settings: "wdth" 112;
 }
@@ -258,58 +267,12 @@
 .section-heading p {
   margin: 0;
   color: var(--ink-soft);
-  font-size: 0.9rem;
+  font-size: 0.88rem;
 }
 
-.allocation-bar {
-  display: flex;
-  height: 18px;
-  margin-top: 20px;
-  gap: 2px;
-  overflow: hidden;
-}
-
-.allocation-segment {
-  display: block;
-  min-width: 2px;
-  background: var(--ink);
-}
-
-.allocation-list {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: 0 32px;
-  margin: 12px 0 0;
-  padding: 0;
-  list-style: none;
-  font-variant-numeric: tabular-nums;
-}
-
-.allocation-list li {
-  display: grid;
-  grid-template-columns: 12px auto 1fr auto;
-  gap: 10px;
-  align-items: center;
-  padding: 9px 0;
-  border-bottom: 1px solid var(--rule);
-}
-
-.allocation-swatch {
-  width: 12px;
-  height: 12px;
-  background: var(--ink);
-}
-
-.allocation-ticker {
-  font-weight: 600;
-}
-
-.allocation-share {
-  color: var(--ink-soft);
-}
-
-.allocation-value {
-  text-align: right;
+.pie-wrap {
+  height: 340px;
+  margin-top: 16px;
 }
 
 .compact {
@@ -337,6 +300,10 @@
 
   .add-row {
     grid-template-columns: 1fr 1fr;
+  }
+
+  .portfolio-grid {
+    grid-template-columns: 1fr;
   }
 
   .add-row-title {

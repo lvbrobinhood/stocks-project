@@ -1,6 +1,51 @@
 import { useEffect, useMemo, useState, type CSSProperties, type FormEvent } from "react";
 import { supabase } from "../supabaseClient";
+import { Pie } from "react-chartjs-2";
+import { Chart as ChartJS, ArcElement, Tooltip, Legend, type Plugin } from "chart.js";
 import "../css/Portfolio.css";
+
+ChartJS.register(ArcElement, Tooltip, Legend);
+
+const piePercentagePlugin: Plugin<"pie"> = {
+  id: "piePercentageLabels",
+  afterDatasetsDraw(chart) {
+    const dataset = chart.data.datasets[0];
+    const values = (dataset?.data ?? []).map((value) => Number(value));
+    const total = values.reduce((sum, value) => sum + value, 0);
+
+    if (!total) return;
+
+    const { ctx } = chart;
+    const meta = chart.getDatasetMeta(0);
+
+    ctx.save();
+    ctx.fillStyle = "#ffffff";
+    ctx.font = "800 13px Inter, system-ui, sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+
+    meta.data.forEach((element, index) => {
+      const value = values[index] ?? 0;
+      const pct = (value / total) * 100;
+      if (pct < 4) return;
+
+      const arc = element as any;
+      const { x, y, startAngle, endAngle, innerRadius, outerRadius } = arc.getProps(
+        ["x", "y", "startAngle", "endAngle", "innerRadius", "outerRadius"],
+        true
+      );
+      const angle = (startAngle + endAngle) / 2;
+      const radius = (innerRadius + outerRadius) / 2;
+      const labelX = x + Math.cos(angle) * radius;
+      const labelY = y + Math.sin(angle) * radius;
+
+      ctx.fillText(`${pct.toFixed(1)}%`, labelX, labelY);
+    });
+
+    ctx.restore();
+  },
+};
+
 
 type QuoteResponse = {
   ticker: string;
@@ -20,6 +65,41 @@ type HoldingWithQuote = Holding & {
 
 type SortKey = "ticker" | "qty" | "costPrice" | "costBasis" | "price" | "marketValue" | "pnl" | "pnlPct";
 type SortDirection = "asc" | "desc";
+
+function hashInt(str: string): number {
+  let h = 0;
+  for (let i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) | 0;
+  return Math.abs(h);
+}
+
+function circularHueDistance(a: number, b: number) {
+  const d = Math.abs(a - b) % 360;
+  return Math.min(d, 360 - d);
+}
+
+function generateDistinctColors(labels: string[]) {
+  const usedHues: number[] = [];
+
+  return labels.map((label) => {
+    const seed = hashInt(label);
+    let hue = seed % 360;
+    const sat = 75;
+    const light = 48 + (seed % 14);
+    const minGap = 28;
+    const step = 137.508;
+
+    while (usedHues.some((h) => circularHueDistance(hue, h) < minGap)) {
+      hue = (hue + step) % 360;
+    }
+
+    usedHues.push(hue);
+
+    return {
+      bg: `hsl(${hue} ${sat}% ${light}% / 0.78)`,
+      border: `hsl(${hue} ${sat}% ${Math.max(light - 18, 25)}% / 1)`,
+    };
+  });
+}
 
 const numberFormat = new Intl.NumberFormat("en-US", {
   minimumFractionDigits: 2,
@@ -357,19 +437,29 @@ export default function PortfolioPage() {
     });
   }, [enriched, sortDirection, sortKey]);
 
-  const allocation = useMemo(() => {
+  const pieData = useMemo(() => {
     const slices = enriched
       .map((h) => {
         const price = h.quote?.price;
         if (price === undefined) return null;
-        return { ticker: h.ticker, value: h.qty * price };
+        return { label: h.ticker, value: h.qty * price };
       })
-      .filter(Boolean) as { ticker: string; value: number }[];
+      .filter(Boolean) as { label: string; value: number }[];
 
-    const total = slices.reduce((sum, s) => sum + s.value, 0);
-    slices.sort((a, b) => b.value - a.value);
+    slices.sort((a, b) => a.label.localeCompare(b.label));
+    const colors = generateDistinctColors(slices.map((s) => s.label));
 
-    return slices.map((s) => ({ ...s, share: total > 0 ? (s.value / total) * 100 : 0 }));
+    return {
+      labels: slices.map((s) => s.label),
+      datasets: [
+        {
+          data: slices.map((s) => s.value),
+          backgroundColor: colors.map((c) => c.bg),
+          borderColor: colors.map((c) => c.border),
+          borderWidth: 0,
+        },
+      ],
+    };
   }, [enriched]);
 
   const pricedHoldings = enriched.filter((h) => h.quote?.price !== undefined);
@@ -391,6 +481,10 @@ export default function PortfolioPage() {
   }
 
   const hasQuotes = pricedHoldings.length > 0;
+  const legendColor =
+    typeof window !== "undefined"
+      ? getComputedStyle(document.documentElement).getPropertyValue("--ink").trim() || undefined
+      : undefined;
   const totalTone = totalPnL === null ? "" : totalPnL < 0 ? "loss" : "gain";
 
   return (
@@ -402,7 +496,6 @@ export default function PortfolioPage() {
             {portfolio.length === 0
               ? "No positions yet"
               : `${portfolio.length} ${portfolio.length === 1 ? "position" : "positions"}, priced ${statementDate()}`}
-            {missingQuoteCount > 0 && ` (${missingQuoteCount} without a price)`}
           </p>
         </div>
         <button
@@ -421,7 +514,7 @@ export default function PortfolioPage() {
           <span className="total-value">{hasQuotes ? money(totalMarketValue, currency) : "—"}</span>
         </div>
         <div className="total">
-          <span className="total-label">Paid</span>
+          <span className="total-label">Cost Basis</span>
           <span className="total-value">{money(totalCostBasis, currency)}</span>
         </div>
         <div className="total">
@@ -466,6 +559,39 @@ export default function PortfolioPage() {
         </div>
       ) : (
         <>
+          <div className="portfolio-grid">
+          <section className="allocation" aria-label="Allocation">
+            <div className="section-heading">
+              <h2>Allocation</h2>
+              <p>By market value</p>
+            </div>
+
+            {pieData.labels.length === 0 ? (
+              <div className="empty-state compact">Refresh prices to display the chart.</div>
+            ) : (
+              <div className="pie-wrap">
+                <Pie
+                  data={pieData}
+                  options={{
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                      legend: { position: "bottom", labels: { color: legendColor, boxWidth: 12 } },
+                      tooltip: {
+                        callbacks: {
+                          label: (ctx) => {
+                            const v = Number(ctx.raw ?? 0);
+                            return `${ctx.label}: ${money(v, currency)}`;
+                          },
+                        },
+                      },
+                    },
+                  }}
+                  plugins={[piePercentagePlugin]}
+                />
+              </div>
+            )}
+          </section>
           <section className="ledger" aria-label="Holdings">
             <div className="table-scroll">
               <table>
@@ -542,44 +668,7 @@ export default function PortfolioPage() {
               </table>
             </div>
           </section>
-
-          <section className="allocation" aria-label="Allocation">
-            <div className="section-heading">
-              <h2>Allocation</h2>
-              <p>Share of market value</p>
-            </div>
-
-            {allocation.length === 0 ? (
-              <div className="empty-state compact">Refresh prices to see how the portfolio is split.</div>
-            ) : (
-              <>
-                <div className="allocation-bar" role="img" aria-label="Allocation by holding">
-                  {allocation.map((a, i) => (
-                    <span
-                      key={a.ticker}
-                      className="allocation-segment"
-                      style={{ width: `${a.share}%`, opacity: 1 - (i / allocation.length) * 0.75 }}
-                      title={`${a.ticker} ${a.share.toFixed(1)}%`}
-                    />
-                  ))}
-                </div>
-                <ol className="allocation-list">
-                  {allocation.map((a, i) => (
-                    <li key={a.ticker}>
-                      <span
-                        className="allocation-swatch"
-                        style={{ opacity: 1 - (i / allocation.length) * 0.75 }}
-                        aria-hidden="true"
-                      />
-                      <span className="allocation-ticker">{a.ticker}</span>
-                      <span className="allocation-share">{a.share.toFixed(1)}%</span>
-                      <span className="allocation-value">{money(a.value, currency)}</span>
-                    </li>
-                  ))}
-                </ol>
-              </>
-            )}
-          </section>
+          </div>
         </>
       )}
     </main>
