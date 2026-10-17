@@ -29,3 +29,8 @@ dist-ssr
 server/.venv/
 __pycache__/
 !server/.env.example
+
+# Claude Code / agent tooling (kept local)
+.claude/
+.agents/
+skills-lock.json
