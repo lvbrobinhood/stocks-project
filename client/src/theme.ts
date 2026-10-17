@@ -42,3 +42,16 @@ export function useTheme(): [Theme, () => void] {
 
   return [theme, toggle];
 }
+
+/** The active theme, updated whenever the data-theme attribute changes (e.g. via the toggle). */
+export function useActiveTheme(): Theme {
+  const [theme, setTheme] = useState<Theme>(readTheme);
+
+  useEffect(() => {
+    const observer = new MutationObserver(() => setTheme(readTheme()));
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+    return () => observer.disconnect();
+  }, []);
+
+  return theme;
+}

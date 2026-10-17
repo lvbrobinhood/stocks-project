@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, type CSSProperties, type FormEvent } from "react";
 import { supabase } from "../supabaseClient";
+import { useActiveTheme } from "../theme";
 import { Pie } from "react-chartjs-2";
 import { Chart as ChartJS, ArcElement, Tooltip, Legend, type Plugin } from "chart.js";
 import "../css/Portfolio.css";
@@ -141,6 +142,7 @@ export default function PortfolioPage() {
   const [portfolio, setPortfolio] = useState<Holding[]>([]);
   const [quotes, setQuotes] = useState<Record<string, QuoteResponse>>({});
   const [sortKey, setSortKey] = useState<SortKey>("ticker");
+  const activeTheme = useActiveTheme();
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
 
   const API_BASE = useMemo(() => "http://localhost:8000", []);
@@ -472,10 +474,10 @@ export default function PortfolioPage() {
   }
 
   const hasQuotes = pricedHoldings.length > 0;
-  const legendColor =
-    typeof window !== "undefined"
-      ? getComputedStyle(document.documentElement).getPropertyValue("--ink").trim() || undefined
-      : undefined;
+  const legendColor = useMemo(
+    () => getComputedStyle(document.documentElement).getPropertyValue("--ink").trim() || undefined,
+    [activeTheme]
+  );
   const totalTone = totalPnL === null ? "" : totalPnL < 0 ? "loss" : "gain";
 
   return (
