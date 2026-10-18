@@ -63,6 +63,11 @@ type Holding = {
 
 type HoldingWithQuote = Holding & {
   quote?: QuoteResponse;
+  price?: number;
+  costBasis: number;
+  marketValue?: number;
+  pnl?: number;
+  pnlPct?: number;
 };
 
 type SortKey = "ticker" | "qty" | "costPrice" | "costBasis" | "price" | "marketValue" | "pnl" | "pnlPct";
@@ -130,6 +135,30 @@ function scaleColor(value: number | undefined, max: number): CSSProperties | und
 function statementDate() {
   return new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric" }).format(
     new Date()
+  );
+}
+
+type SortHeaderProps = {
+  label: string;
+  column: SortKey;
+  sortKey: SortKey;
+  sortDirection: SortDirection;
+  onSort: (key: SortKey) => void;
+};
+
+function SortHeader({ label, column, sortKey, sortDirection, onSort }: SortHeaderProps) {
+  const active = sortKey === column;
+
+  return (
+    <button
+      className={`sort-header ${active ? "active" : ""}`}
+      type="button"
+      onClick={() => onSort(column)}
+      aria-label={`Sort by ${label}`}
+    >
+      <span>{label}</span>
+      <span className={`sort-triangle ${active ? sortDirection : ""}`} />
+    </button>
   );
 }
 
@@ -354,37 +383,15 @@ export default function PortfolioPage() {
     }
   }
 
-  const enriched: HoldingWithQuote[] = portfolio.map((h) => ({
-    ...h,
-    quote: quotes[h.ticker],
-  }));
-
-  function getSortValue(h: HoldingWithQuote, key: SortKey) {
-    const price = h.quote?.price;
+  const enriched: HoldingWithQuote[] = portfolio.map((h) => {
+    const quote = quotes[h.ticker];
+    const price = quote?.price;
     const costBasis = h.qty * h.costPrice;
     const marketValue = price !== undefined ? h.qty * price : undefined;
     const pnl = marketValue !== undefined ? marketValue - costBasis : undefined;
     const pnlPct = pnl !== undefined && costBasis > 0 ? (pnl / costBasis) * 100 : undefined;
-
-    switch (key) {
-      case "ticker":
-        return h.ticker;
-      case "qty":
-        return h.qty;
-      case "costPrice":
-        return h.costPrice;
-      case "costBasis":
-        return costBasis;
-      case "price":
-        return price;
-      case "marketValue":
-        return marketValue;
-      case "pnl":
-        return pnl;
-      case "pnlPct":
-        return pnlPct;
-    }
-  }
+    return { ...h, quote, price, costBasis, marketValue, pnl, pnlPct };
+  });
 
   function sortBy(key: SortKey) {
     if (sortKey === key) {
@@ -396,26 +403,10 @@ export default function PortfolioPage() {
     setSortDirection("asc");
   }
 
-  function SortHeader({ label, column }: { label: string; column: SortKey }) {
-    const active = sortKey === column;
-
-    return (
-      <button
-        className={`sort-header ${active ? "active" : ""}`}
-        type="button"
-        onClick={() => sortBy(column)}
-        aria-label={`Sort by ${label}`}
-      >
-        <span>{label}</span>
-        <span className={`sort-triangle ${active ? sortDirection : ""}`} />
-      </button>
-    );
-  }
-
   const sortedHoldings = useMemo(() => {
     return [...enriched].sort((a, b) => {
-      const aValue = getSortValue(a, sortKey);
-      const bValue = getSortValue(b, sortKey);
+      const aValue = a[sortKey];
+      const bValue = b[sortKey];
 
       if (aValue === undefined && bValue === undefined) return 0;
       if (aValue === undefined) return 1;
@@ -433,9 +424,8 @@ export default function PortfolioPage() {
   const pieData = useMemo(() => {
     const slices = enriched
       .map((h) => {
-        const price = h.quote?.price;
-        if (price === undefined) return null;
-        return { label: h.ticker, value: h.qty * price };
+        if (h.marketValue === undefined) return null;
+        return { label: h.ticker, value: h.marketValue };
       })
       .filter(Boolean) as { label: string; value: number }[];
 
@@ -455,14 +445,11 @@ export default function PortfolioPage() {
     };
   }, [enriched]);
 
-  const pricedHoldings = enriched.filter((h) => h.quote?.price !== undefined);
+  const pricedHoldings = enriched.filter((h) => h.marketValue !== undefined);
   const missingQuoteCount = enriched.length - pricedHoldings.length;
   const allQuotesLoaded = enriched.length > 0 && missingQuoteCount === 0;
-  const totalMarketValue = pricedHoldings.reduce(
-    (sum, h) => sum + h.qty * (h.quote?.price ?? 0),
-    0
-  );
-  const totalCostBasis = enriched.reduce((sum, h) => sum + h.qty * h.costPrice, 0);
+  const totalMarketValue = pricedHoldings.reduce((sum, h) => sum + (h.marketValue ?? 0), 0);
+  const totalCostBasis = enriched.reduce((sum, h) => sum + h.costBasis, 0);
   const totalPnL = allQuotesLoaded ? totalMarketValue - totalCostBasis : null;
   const totalPnLPct =
     totalPnL !== null && totalCostBasis > 0 ? (totalPnL / totalCostBasis) * 100 : null;
@@ -474,6 +461,7 @@ export default function PortfolioPage() {
   }
 
   const hasQuotes = pricedHoldings.length > 0;
+  const sortProps = { sortKey, sortDirection, onSort: sortBy };
   const legendColor = useMemo(
     () => getComputedStyle(document.documentElement).getPropertyValue("--ink").trim() || undefined,
     [activeTheme]
@@ -590,26 +578,21 @@ export default function PortfolioPage() {
               <table>
                 <thead>
                   <tr>
-                    <th scope="col"><SortHeader label="Stock" column="ticker" /></th>
-                    <th scope="col" className="num"><SortHeader label="Qty" column="qty" /></th>
-                    <th scope="col" className="num"><SortHeader label="Buy Price" column="costPrice" /></th>
-                    <th scope="col" className="num"><SortHeader label="Total Cost Basis" column="costBasis" /></th>
-                    <th scope="col" className="num"><SortHeader label="Current Price" column="price" /></th>
-                    <th scope="col" className="num"><SortHeader label="Total Value" column="marketValue" /></th>
-                    <th scope="col" className="num"><SortHeader label="P/L" column="pnl" /></th>
-                    <th scope="col" className="num"><SortHeader label="%" column="pnlPct" /></th>
+                    <th scope="col"><SortHeader label="Stock" column="ticker" {...sortProps} /></th>
+                    <th scope="col" className="num"><SortHeader label="Qty" column="qty" {...sortProps} /></th>
+                    <th scope="col" className="num"><SortHeader label="Buy Price" column="costPrice" {...sortProps} /></th>
+                    <th scope="col" className="num"><SortHeader label="Total Cost Basis" column="costBasis" {...sortProps} /></th>
+                    <th scope="col" className="num"><SortHeader label="Current Price" column="price" {...sortProps} /></th>
+                    <th scope="col" className="num"><SortHeader label="Total Value" column="marketValue" {...sortProps} /></th>
+                    <th scope="col" className="num"><SortHeader label="P/L" column="pnl" {...sortProps} /></th>
+                    <th scope="col" className="num"><SortHeader label="%" column="pnlPct" {...sortProps} /></th>
                     <th scope="col" className="row-action"><span className="visually-hidden">Remove</span></th>
                   </tr>
                 </thead>
 
                 <tbody>
                   {sortedHoldings.map((h) => {
-                    const price = h.quote?.price;
-                    const marketValue = price !== undefined ? h.qty * price : undefined;
-                    const costBasis = h.qty * h.costPrice;
-                    const pnl = marketValue !== undefined ? marketValue - costBasis : undefined;
-                    const pnlPct =
-                      pnl !== undefined && costBasis > 0 ? (pnl / costBasis) * 100 : undefined;
+                    const { price, marketValue, costBasis, pnl, pnlPct } = h;
 
                     return (
                       <tr key={h.ticker}>
