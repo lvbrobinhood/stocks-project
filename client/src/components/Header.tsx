@@ -1,5 +1,5 @@
 import { NavLink, useNavigate } from "react-router-dom";
-import { supabase } from "../../supabaseClient";
+import { supabase } from "../lib/supabaseClient";
 import ThemeToggle from "./ThemeToggle";
 import "./Header.css";
 

@@ -1,4 +1,4 @@
-import { API_BASE } from "../apiBase";
+import { API_BASE } from "../../lib/apiBase";
 import { useState } from "react";
 import { ChartCanvas, Chart, CandlestickSeries, LineSeries, XAxis, YAxis, CrossHairCursor } from "react-financial-charts";
 import { discontinuousTimeScaleProvider } from "react-financial-charts";

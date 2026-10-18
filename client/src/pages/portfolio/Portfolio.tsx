@@ -1,10 +1,10 @@
-import { API_BASE } from "../apiBase";
+import { API_BASE } from "../../lib/apiBase";
 import { useEffect, useMemo, useState, type CSSProperties, type FormEvent } from "react";
-import { supabase } from "../supabaseClient";
-import { useActiveTheme } from "../theme";
+import { supabase } from "../../lib/supabaseClient";
+import { useActiveTheme } from "../../lib/theme";
 import { Pie } from "react-chartjs-2";
 import { Chart as ChartJS, ArcElement, Tooltip, Legend, type Plugin } from "chart.js";
-import "../css/Portfolio.css";
+import "./Portfolio.css";
 
 ChartJS.register(ArcElement, Tooltip, Legend);
 

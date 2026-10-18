@@ -1,8 +1,8 @@
 import { useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { supabase } from "../supabaseClient";
-import ThemeToggle from "./components/ThemeToggle";
-import "../css/Landing.css";
+import { supabase } from "../../lib/supabaseClient";
+import ThemeToggle from "../../components/ThemeToggle";
+import "./Landing.css";
 
 type SampleRow = {
   ticker: string;

@@ -1,6 +1,6 @@
-import { API_BASE } from "../apiBase";
+import { API_BASE } from "../../lib/apiBase";
 import { useMemo, useState } from "react";
-import "../css/DCF.css";
+import "./DCF.css";
 
 type QuoteResponse = {
   ticker: string;

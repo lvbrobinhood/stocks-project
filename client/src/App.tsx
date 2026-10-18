@@ -1,12 +1,12 @@
 import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
-import Landing from "./pages/Landing";
-import Signup from "./pages/Signup";
-import Login from "./pages/Login";
-import Dashboard from "./pages/Dashboard";
-import Portfolio from "./pages/Portfolio";
-import Analysis from "./pages/Analysis";
-import DCF from "./pages/DCF";
-import Header from "./pages/components/Header";
+import Landing from "./pages/landing/Landing";
+import Signup from "./pages/signup/Signup";
+import Login from "./pages/login/Login";
+import Dashboard from "./pages/dashboard/Dashboard";
+import Portfolio from "./pages/portfolio/Portfolio";
+import Analysis from "./pages/analysis/Analysis";
+import DCF from "./pages/dcf/DCF";
+import Header from "./components/Header";
 import "./App.css";
 
 const PUBLIC_ROUTES = new Set(["/", "/login", "/signup"]);
