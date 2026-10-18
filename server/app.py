@@ -89,9 +89,13 @@ def profile():
         return jsonify(cached)
 
     try:
-        info = yf.Ticker(ticker).info or {}
+        # Yahoo's search endpoint returns sector/quoteType and is far less
+        # rate-limited than the quoteSummary endpoint behind Ticker.info.
+        quotes = yf.Search(ticker, max_results=10, news_count=0, lists_count=0,
+                           include_cb=False, include_research=False).quotes
+        match = next((q for q in quotes if str(q.get("symbol", "")).upper() == ticker), None)
         # Equities carry a sector; ETFs, funds and crypto only have a quoteType.
-        sector = info.get("sector") or info.get("quoteType")
+        sector = match and (match.get("sector") or match.get("quoteType"))
         if not sector:
             return jsonify({"error": "ticker not found or no data"}), 404
 
