@@ -72,7 +72,7 @@
 /* Add a position: a ledger entry row */
 .add-row {
   display: grid;
-  grid-template-columns: auto minmax(120px, 1fr) minmax(100px, 1fr) minmax(120px, 1fr) auto;
+  grid-template-columns: auto minmax(120px, 1fr) minmax(100px, 1fr) minmax(120px, 1fr) minmax(140px, 1fr) auto;
   gap: 16px;
   align-items: end;
   padding: 22px 0;
@@ -84,7 +84,8 @@
   font-weight: 600;
 }
 
-.add-row .field input {
+.add-row .field input,
+.add-row .field select {
   min-height: 42px;
 }
 

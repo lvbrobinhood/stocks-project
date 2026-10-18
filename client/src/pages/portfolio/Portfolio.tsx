@@ -53,6 +53,7 @@ type Holding = {
   ticker: string;
   qty: number;
   costPrice: number;
+  sector: string | null;
 };
 
 type HoldingWithQuote = Holding & {
@@ -113,6 +114,23 @@ function signedPct(value: number) {
 
 const UNCLASSIFIED_SECTOR = "Unclassified";
 
+// Yahoo's sector names, so a manual pick and an automatic lookup agree.
+const SECTOR_OPTIONS = [
+  "Technology",
+  "Financial Services",
+  "Healthcare",
+  "Consumer Cyclical",
+  "Consumer Defensive",
+  "Industrials",
+  "Basic Materials",
+  "Energy",
+  "Utilities",
+  "Real Estate",
+  "Communication Services",
+  "ETF",
+  "Other",
+];
+
 const PNL_SCALE_MAX = 500;
 const PCT_SCALE_MAX = 30;
 
@@ -167,7 +185,7 @@ export default function PortfolioPage() {
   const [notice, setNotice] = useState("");
   const [portfolio, setPortfolio] = useState<Holding[]>([]);
   const [quotes, setQuotes] = useState<Record<string, QuoteResponse>>({});
-  const [sectors, setSectors] = useState<Record<string, string>>({});
+  const [sector, setSector] = useState("");
   const [sortKey, setSortKey] = useState<SortKey>("ticker");
   const activeTheme = useActiveTheme();
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
@@ -185,17 +203,13 @@ export default function PortfolioPage() {
     return data.user.id;
   }
 
-  // Sectors are a nice-to-have for the sector chart; failures leave the holding unclassified.
-  async function loadSectors(tickers: string[]) {
-    if (tickers.length === 0) return;
-    const results = await Promise.allSettled(tickers.map((t) => fetchProfile(t)));
-    setSectors((prev) => {
-      const next = { ...prev };
-      for (const res of results) {
-        if (res.status === "fulfilled") next[res.value.ticker] = res.value.sector;
-      }
-      return next;
-    });
+  // The sector is a nice-to-have for the sector chart; a failed lookup leaves it null.
+  async function lookupSector(t: string): Promise<string | null> {
+    try {
+      return (await fetchProfile(t)).sector;
+    } catch {
+      return null;
+    }
   }
 
   async function upsertHoldingToSupabase(h: Holding) {
@@ -209,6 +223,7 @@ export default function PortfolioPage() {
           ticker: h.ticker,
           qty: h.qty,
           cost_price: h.costPrice,
+          sector: h.sector,
         },
         { onConflict: "user_id,ticker" }
       );
@@ -238,7 +253,7 @@ export default function PortfolioPage() {
 
         const { data, error } = await supabase
           .from("portfolio_holdings")
-          .select("ticker, qty, cost_price")
+          .select("ticker, qty, cost_price, sector")
           .eq("user_id", userId)
           .order("ticker", { ascending: true });
 
@@ -248,11 +263,11 @@ export default function PortfolioPage() {
           ticker: String(r.ticker).toUpperCase(),
           qty: Number(r.qty),
           costPrice: Number(r.cost_price),
+          sector: r.sector ? String(r.sector) : null,
         }));
 
         setPortfolio(holdings);
 
-        loadSectors(holdings.map((h) => h.ticker));
         const results = await Promise.allSettled(
           holdings.map((h) => fetchQuote(h.ticker))
         );
@@ -298,14 +313,15 @@ export default function PortfolioPage() {
 
     try {
       const existing = portfolio.find((h) => h.ticker === t);
+      const resolvedSector = sector || existing?.sector || (await lookupSector(t));
 
       const updatedHolding: Holding = existing
         ? (() => {
             const newQty = existing.qty + q;
             const newAvgCost = (existing.qty * existing.costPrice + q * c) / newQty;
-            return { ticker: t, qty: newQty, costPrice: newAvgCost };
+            return { ticker: t, qty: newQty, costPrice: newAvgCost, sector: resolvedSector };
           })()
-        : { ticker: t, qty: q, costPrice: c };
+        : { ticker: t, qty: q, costPrice: c, sector: resolvedSector };
 
       await upsertHoldingToSupabase(updatedHolding);
 
@@ -320,8 +336,7 @@ export default function PortfolioPage() {
       setTicker("");
       setQty("");
       setCostPrice("");
-
-      if (!existing) loadSectors([t]);
+      setSector("");
 
       // The price is a nice-to-have; the holding is saved either way.
       try {
@@ -344,7 +359,19 @@ export default function PortfolioPage() {
     setError("");
     setNotice("");
 
-    loadSectors(portfolio.filter((h) => !sectors[h.ticker]).map((h) => h.ticker));
+    // Retry missing sectors one at a time; Yahoo throttles bursts of profile lookups.
+    for (const h of portfolio.filter((x) => x.sector === null)) {
+      const found = await lookupSector(h.ticker);
+      if (found === null) continue;
+      const updated = { ...h, sector: found };
+      try {
+        await upsertHoldingToSupabase(updated);
+        setPortfolio((prev) => prev.map((x) => (x.ticker === h.ticker ? updated : x)));
+      } catch {
+        // Keep going; the sector will be retried on the next refresh.
+      }
+    }
+
     const results = await Promise.allSettled(portfolio.map((h) => fetchQuote(h.ticker)));
     const nextQuotes: Record<string, QuoteResponse> = { ...quotes };
     let failed = 0;
@@ -371,11 +398,6 @@ export default function PortfolioPage() {
 
       setPortfolio((prev) => prev.filter((h) => h.ticker !== t));
       setQuotes((prev) => {
-        const copy = { ...prev };
-        delete copy[t];
-        return copy;
-      });
-      setSectors((prev) => {
         const copy = { ...prev };
         delete copy[t];
         return copy;
@@ -453,8 +475,8 @@ export default function PortfolioPage() {
     const bySector = new Map<string, number>();
     for (const h of enriched) {
       if (h.marketValue === undefined) continue;
-      const sector = sectors[h.ticker] ?? UNCLASSIFIED_SECTOR;
-      bySector.set(sector, (bySector.get(sector) ?? 0) + h.marketValue);
+      const label = h.sector ?? UNCLASSIFIED_SECTOR;
+      bySector.set(label, (bySector.get(label) ?? 0) + h.marketValue);
     }
 
     const slices = [...bySector].map(([label, value]) => ({ label, value }));
@@ -472,7 +494,7 @@ export default function PortfolioPage() {
         },
       ],
     };
-  }, [enriched, sectors]);
+  }, [enriched]);
 
   const pricedHoldings = enriched.filter((h) => h.marketValue !== undefined);
   const missingQuoteCount = enriched.length - pricedHoldings.length;
@@ -569,6 +591,17 @@ export default function PortfolioPage() {
             placeholder="185.50"
             inputMode="decimal"
           />
+        </label>
+        <label className="field">
+          <span>Sector</span>
+          <select value={sector} onChange={(e) => setSector(e.target.value)}>
+            <option value="">Auto-detect</option>
+            {SECTOR_OPTIONS.map((s) => (
+              <option key={s} value={s}>
+                {s}
+              </option>
+            ))}
+          </select>
         </label>
         <button className="btn" type="submit" disabled={loading}>
           {loading ? "Saving" : "Add"}

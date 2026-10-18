@@ -198,6 +198,7 @@ a {
 }
 
 .field input,
+.field select,
 .form input,
 .analysis-search input,
 .auth-form input {
@@ -213,6 +214,7 @@ a {
 }
 
 .field input:focus,
+.field select:focus,
 .form input:focus,
 .analysis-search input:focus,
 .auth-form input:focus {
