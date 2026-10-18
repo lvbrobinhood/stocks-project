@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type CSSProperties, type FormEvent } from "react";
 import { supabase } from "../../lib/supabaseClient";
-import { fetchQuote, type QuoteResponse } from "../../lib/api";
+import { fetchProfile, fetchQuote, type QuoteResponse } from "../../lib/api";
 import { useActiveTheme } from "../../lib/theme";
 import { Pie } from "react-chartjs-2";
 import { Chart as ChartJS, ArcElement, Tooltip, Legend, type Plugin } from "chart.js";
@@ -111,6 +111,8 @@ function signedPct(value: number) {
   return value < 0 ? `-${Math.abs(value).toFixed(2)}%` : `${value.toFixed(2)}%`;
 }
 
+const UNCLASSIFIED_SECTOR = "Unclassified";
+
 const PNL_SCALE_MAX = 500;
 const PCT_SCALE_MAX = 30;
 
@@ -165,6 +167,7 @@ export default function PortfolioPage() {
   const [notice, setNotice] = useState("");
   const [portfolio, setPortfolio] = useState<Holding[]>([]);
   const [quotes, setQuotes] = useState<Record<string, QuoteResponse>>({});
+  const [sectors, setSectors] = useState<Record<string, string>>({});
   const [sortKey, setSortKey] = useState<SortKey>("ticker");
   const activeTheme = useActiveTheme();
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
@@ -180,6 +183,19 @@ export default function PortfolioPage() {
     const { data, error } = await supabase.auth.getUser();
     if (error || !data.user) throw new Error("You are not logged in.");
     return data.user.id;
+  }
+
+  // Sectors are a nice-to-have for the sector chart; failures leave the holding unclassified.
+  async function loadSectors(tickers: string[]) {
+    if (tickers.length === 0) return;
+    const results = await Promise.allSettled(tickers.map((t) => fetchProfile(t)));
+    setSectors((prev) => {
+      const next = { ...prev };
+      for (const res of results) {
+        if (res.status === "fulfilled") next[res.value.ticker] = res.value.sector;
+      }
+      return next;
+    });
   }
 
   async function upsertHoldingToSupabase(h: Holding) {
@@ -236,6 +252,7 @@ export default function PortfolioPage() {
 
         setPortfolio(holdings);
 
+        loadSectors(holdings.map((h) => h.ticker));
         const results = await Promise.allSettled(
           holdings.map((h) => fetchQuote(h.ticker))
         );
@@ -304,6 +321,8 @@ export default function PortfolioPage() {
       setQty("");
       setCostPrice("");
 
+      if (!existing) loadSectors([t]);
+
       // The price is a nice-to-have; the holding is saved either way.
       try {
         const quote = await fetchQuote(t);
@@ -325,6 +344,7 @@ export default function PortfolioPage() {
     setError("");
     setNotice("");
 
+    loadSectors(portfolio.filter((h) => !sectors[h.ticker]).map((h) => h.ticker));
     const results = await Promise.allSettled(portfolio.map((h) => fetchQuote(h.ticker)));
     const nextQuotes: Record<string, QuoteResponse> = { ...quotes };
     let failed = 0;
@@ -351,6 +371,11 @@ export default function PortfolioPage() {
 
       setPortfolio((prev) => prev.filter((h) => h.ticker !== t));
       setQuotes((prev) => {
+        const copy = { ...prev };
+        delete copy[t];
+        return copy;
+      });
+      setSectors((prev) => {
         const copy = { ...prev };
         delete copy[t];
         return copy;
@@ -424,6 +449,31 @@ export default function PortfolioPage() {
     };
   }, [enriched]);
 
+  const sectorPieData = useMemo(() => {
+    const bySector = new Map<string, number>();
+    for (const h of enriched) {
+      if (h.marketValue === undefined) continue;
+      const sector = sectors[h.ticker] ?? UNCLASSIFIED_SECTOR;
+      bySector.set(sector, (bySector.get(sector) ?? 0) + h.marketValue);
+    }
+
+    const slices = [...bySector].map(([label, value]) => ({ label, value }));
+    slices.sort((a, b) => a.value - b.value);
+    const colors = generateDistinctColors(slices.map((s) => s.label));
+
+    return {
+      labels: slices.map((s) => s.label),
+      datasets: [
+        {
+          data: slices.map((s) => s.value),
+          backgroundColor: colors.map((c) => c.bg),
+          borderColor: colors.map((c) => c.border),
+          borderWidth: 0,
+        },
+      ],
+    };
+  }, [enriched, sectors]);
+
   const pricedHoldings = enriched.filter((h) => h.marketValue !== undefined);
   const missingQuoteCount = enriched.length - pricedHoldings.length;
   const allQuotesLoaded = enriched.length > 0 && missingQuoteCount === 0;
@@ -446,6 +496,21 @@ export default function PortfolioPage() {
     [activeTheme]
   );
   const totalTone = totalPnL === null ? "" : totalPnL < 0 ? "loss" : "gain";
+  const pieOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { position: "bottom" as const, labels: { color: legendColor, boxWidth: 12 } },
+      tooltip: {
+        callbacks: {
+          label: (ctx: { label: string; raw: unknown }) => {
+            const v = Number(ctx.raw ?? 0);
+            return `${ctx.label}: ${money(v, currency)}`;
+          },
+        },
+      },
+    },
+  };
 
   return (
     <main className="page-shell portfolio-page">
@@ -530,25 +595,7 @@ export default function PortfolioPage() {
               <div className="empty-state compact">Refresh prices to display the chart.</div>
             ) : (
               <div className="pie-wrap">
-                <Pie
-                  data={pieData}
-                  options={{
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                      legend: { position: "bottom", labels: { color: legendColor, boxWidth: 12 } },
-                      tooltip: {
-                        callbacks: {
-                          label: (ctx) => {
-                            const v = Number(ctx.raw ?? 0);
-                            return `${ctx.label}: ${money(v, currency)}`;
-                          },
-                        },
-                      },
-                    },
-                  }}
-                  plugins={[piePercentagePlugin]}
-                />
+                <Pie data={pieData} options={pieOptions} plugins={[piePercentagePlugin]} />
               </div>
             )}
           </section>
@@ -624,6 +671,21 @@ export default function PortfolioPage() {
             </div>
           </section>
           </div>
+
+          <section className="allocation sector-allocation" aria-label="Sector allocation">
+            <div className="section-heading">
+              <h2>Sector allocation</h2>
+              <p>By market value</p>
+            </div>
+
+            {sectorPieData.labels.length === 0 ? (
+              <div className="empty-state compact">Refresh prices to display the chart.</div>
+            ) : (
+              <div className="pie-wrap">
+                <Pie data={sectorPieData} options={pieOptions} plugins={[piePercentagePlugin]} />
+              </div>
+            )}
+          </section>
         </>
       )}
     </main>

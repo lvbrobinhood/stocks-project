@@ -7,8 +7,9 @@ Small Flask service that proxies Yahoo Finance via `yfinance`.
 - `GET /health` – liveness check
 - `GET /quote?ticker=AAPL` – latest close price
 - `GET /stock-chart?ticker=AAPL` – one year of daily OHLCV plus a 20-day moving average
+- `GET /profile?ticker=AAPL` – sector (or quote type for ETFs and funds)
 
-Responses are cached in memory per ticker (see `QUOTE_TTL_SECONDS` / `CHART_TTL_SECONDS`).
+Responses are cached in memory per ticker (see `QUOTE_TTL_SECONDS` / `CHART_TTL_SECONDS` / `PROFILE_TTL_SECONDS`).
 
 ## Run locally
 

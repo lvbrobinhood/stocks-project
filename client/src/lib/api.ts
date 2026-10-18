@@ -10,6 +10,11 @@ export type QuoteResponse = {
   currency?: string;
 };
 
+export type ProfileResponse = {
+  ticker: string;
+  sector: string;
+};
+
 export type ChartPoint = {
   date: Date;
   open: number;
@@ -40,6 +45,11 @@ async function getJson<T>(path: string): Promise<T> {
 
 export function fetchQuote(ticker: string): Promise<QuoteResponse> {
   return getJson<QuoteResponse>(`/quote?ticker=${encodeURIComponent(ticker)}`);
+}
+
+/** Sector for equities; quote type (ETF, fund, crypto) for everything else. */
+export function fetchProfile(ticker: string): Promise<ProfileResponse> {
+  return getJson<ProfileResponse>(`/profile?ticker=${encodeURIComponent(ticker)}`);
 }
 
 /** One year of daily OHLCV plus a server-computed 20-day moving average. */

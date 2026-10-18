@@ -16,6 +16,7 @@ CORS(app, origins=[o.strip() for o in _origins.split(",") if o.strip()])
 
 QUOTE_TTL_SECONDS = int(os.environ.get("QUOTE_TTL_SECONDS", "60"))
 CHART_TTL_SECONDS = int(os.environ.get("CHART_TTL_SECONDS", "900"))
+PROFILE_TTL_SECONDS = int(os.environ.get("PROFILE_TTL_SECONDS", "86400"))
 
 _ALLOWED_TICKER_CHARS = set("ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.-^=")
 
@@ -75,6 +76,30 @@ def quote():
         return jsonify(payload)
     except Exception as e:
         return jsonify({"error": f"failed to fetch price: {e}"}), 500
+
+
+@app.get("/profile")
+def profile():
+    ticker, err = _read_ticker()
+    if err:
+        return err
+
+    cached = _cache_get(f"profile:{ticker}")
+    if cached is not None:
+        return jsonify(cached)
+
+    try:
+        info = yf.Ticker(ticker).info or {}
+        # Equities carry a sector; ETFs, funds and crypto only have a quoteType.
+        sector = info.get("sector") or info.get("quoteType")
+        if not sector:
+            return jsonify({"error": "ticker not found or no data"}), 404
+
+        payload = {"ticker": ticker, "sector": str(sector)}
+        _cache_set(f"profile:{ticker}", payload, PROFILE_TTL_SECONDS)
+        return jsonify(payload)
+    except Exception as e:
+        return jsonify({"error": f"failed to fetch profile: {e}"}), 500
 
 
 @app.get("/stock-chart")

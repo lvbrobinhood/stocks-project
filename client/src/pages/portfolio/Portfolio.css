@@ -276,6 +276,11 @@
   margin-top: 16px;
 }
 
+.sector-allocation {
+  max-width: 480px;
+  margin-top: 32px;
+}
+
 .compact {
   margin-top: 16px;
   padding: 22px;
