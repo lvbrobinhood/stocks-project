@@ -471,6 +471,22 @@ export default function PortfolioPage() {
     };
   }, [enriched]);
 
+  // Every holding grouped by sector, sectors and tickers alphabetical, Unclassified last.
+  const sectorGroups = useMemo(() => {
+    const groups = new Map<string, string[]>();
+    for (const h of portfolio) {
+      const label = h.sector ?? UNCLASSIFIED_SECTOR;
+      groups.set(label, [...(groups.get(label) ?? []), h.ticker]);
+    }
+    return [...groups]
+      .map(([sector, tickers]) => ({ sector, tickers: tickers.sort() }))
+      .sort((a, b) => {
+        if (a.sector === UNCLASSIFIED_SECTOR) return 1;
+        if (b.sector === UNCLASSIFIED_SECTOR) return -1;
+        return a.sector.localeCompare(b.sector);
+      });
+  }, [portfolio]);
+
   const sectorPieData = useMemo(() => {
     const bySector = new Map<string, number>();
     for (const h of enriched) {
@@ -711,13 +727,24 @@ export default function PortfolioPage() {
               <p>By market value</p>
             </div>
 
-            {sectorPieData.labels.length === 0 ? (
-              <div className="empty-state compact">Refresh prices to display the chart.</div>
-            ) : (
-              <div className="pie-wrap">
-                <Pie data={sectorPieData} options={pieOptions} plugins={[piePercentagePlugin]} />
-              </div>
-            )}
+            <div className="sector-body">
+              {sectorPieData.labels.length === 0 ? (
+                <div className="empty-state compact">Refresh prices to display the chart.</div>
+              ) : (
+                <div className="pie-wrap">
+                  <Pie data={sectorPieData} options={pieOptions} plugins={[piePercentagePlugin]} />
+                </div>
+              )}
+
+              <ul className="sector-list" aria-label="Holdings by sector">
+                {sectorGroups.map((g) => (
+                  <li key={g.sector}>
+                    <span className="sector-name">{g.sector}</span>
+                    <span className="sector-tickers">{g.tickers.join(", ")}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
           </section>
         </>
       )}
