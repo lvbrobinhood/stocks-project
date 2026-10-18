@@ -1,12 +1,6 @@
-import { API_BASE } from "../../lib/apiBase";
+import { fetchQuote, type QuoteResponse } from "../../lib/api";
 import { useMemo, useState } from "react";
 import "./DCF.css";
-
-type QuoteResponse = {
-  ticker: string;
-  price: number;
-  currency?: string;
-};
 
 type ProjectionRow = {
   year: number;
@@ -55,7 +49,7 @@ export default function DCF() {
   const [debt, setDebt] = useState("110000");
   const [sharesOutstanding, setSharesOutstanding] = useState("15500");
 
-  async function fetchQuote() {
+  async function loadQuote() {
     const cleanTicker = ticker.trim().toUpperCase();
     if (!cleanTicker) {
       setQuoteError("Enter a ticker before loading the market price.");
@@ -67,18 +61,7 @@ export default function DCF() {
     setQuoteError("");
 
     try {
-      const res = await fetch(`${API_BASE}/quote?ticker=${encodeURIComponent(cleanTicker)}`);
-      const data = await res.json().catch(() => ({}));
-
-      if (!res.ok) {
-        const msg =
-          typeof (data as { error?: unknown }).error === "string"
-            ? String((data as { error: string }).error)
-            : `Request failed (${res.status})`;
-        throw new Error(msg);
-      }
-
-      setQuote(data as QuoteResponse);
+      setQuote(await fetchQuote(cleanTicker));
     } catch (error: unknown) {
       setQuote(null);
       setQuoteError(error instanceof Error ? error.message : "Failed to load quote.");
@@ -187,11 +170,11 @@ export default function DCF() {
             <input
               value={ticker}
               onChange={(event) => setTicker(event.target.value.toUpperCase())}
-              onKeyDown={(event) => event.key === "Enter" && fetchQuote()}
+              onKeyDown={(event) => event.key === "Enter" && loadQuote()}
               placeholder="AAPL"
             />
           </label>
-          <button className="btn" type="button" onClick={fetchQuote} disabled={loadingQuote}>
+          <button className="btn" type="button" onClick={loadQuote} disabled={loadingQuote}>
             {loadingQuote ? "Loading..." : "Load price"}
           </button>
         </div>

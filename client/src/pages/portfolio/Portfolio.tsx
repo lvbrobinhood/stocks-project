@@ -1,6 +1,6 @@
-import { API_BASE } from "../../lib/apiBase";
 import { useEffect, useMemo, useState, type CSSProperties, type FormEvent } from "react";
 import { supabase } from "../../lib/supabaseClient";
+import { fetchQuote, type QuoteResponse } from "../../lib/api";
 import { useActiveTheme } from "../../lib/theme";
 import { Pie } from "react-chartjs-2";
 import { Chart as ChartJS, ArcElement, Tooltip, Legend, type Plugin } from "chart.js";
@@ -48,12 +48,6 @@ const piePercentagePlugin: Plugin<"pie"> = {
   },
 };
 
-
-type QuoteResponse = {
-  ticker: string;
-  price: number;
-  currency?: string;
-};
 
 type Holding = {
   ticker: string;
@@ -186,21 +180,6 @@ export default function PortfolioPage() {
     const { data, error } = await supabase.auth.getUser();
     if (error || !data.user) throw new Error("You are not logged in.");
     return data.user.id;
-  }
-
-  async function fetchQuote(t: string): Promise<QuoteResponse> {
-    const res = await fetch(`${API_BASE}/quote?ticker=${encodeURIComponent(t)}`);
-    const data = await res.json().catch(() => ({}));
-
-    if (!res.ok) {
-      const msg =
-        typeof (data as any)?.error === "string"
-          ? (data as any).error
-          : `Request failed (${res.status})`;
-      throw new Error(msg);
-    }
-
-    return data as QuoteResponse;
   }
 
   async function upsertHoldingToSupabase(h: Holding) {

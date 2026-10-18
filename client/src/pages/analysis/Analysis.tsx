@@ -1,11 +1,11 @@
-import { API_BASE } from "../../lib/apiBase";
+import { fetchStockChart, type ChartPoint } from "../../lib/api";
 import { useState } from "react";
 import { ChartCanvas, Chart, CandlestickSeries, LineSeries, XAxis, YAxis, CrossHairCursor } from "react-financial-charts";
 import { discontinuousTimeScaleProvider } from "react-financial-charts";
 
 export default function Analysis() {
   const [ticker, setTicker] = useState("");
-  const [rawData, setRawData] = useState<any[]>([]);
+  const [rawData, setRawData] = useState<ChartPoint[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -14,22 +14,15 @@ export default function Analysis() {
     setLoading(true);
     setError("");
     try {
-      const res = await fetch(`${API_BASE}/stock-chart?ticker=${encodeURIComponent(ticker)}`);
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
-      const formatted = data.data.map((d: any) => ({
-        ...d,
-        date: new Date(d.date),
-      }));
-      setRawData(formatted);
-    } catch (err: any) {
-      setError(err.message);
+      setRawData(await fetchStockChart(ticker));
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to load chart.");
     } finally {
       setLoading(false);
     }
   };
 
-  const xScaleProvider = discontinuousTimeScaleProvider.inputDateAccessor((d: any) => d.date);
+  const xScaleProvider = discontinuousTimeScaleProvider.inputDateAccessor((d: ChartPoint) => d.date);
   const { data: chartData, xScale, xAccessor, displayXAccessor } = xScaleProvider(rawData);
   const xExtents = chartData.length > 0 ? [xAccessor(chartData[0]), xAccessor(chartData[chartData.length - 1])] : [0, 10];
 
@@ -78,12 +71,12 @@ export default function Analysis() {
               xExtents={xExtents}
               seriesName="candlestick"
             >
-              <Chart id={1} yExtents={(d: any) => [d.high, d.low]}>
+              <Chart id={1} yExtents={(d: ChartPoint) => [d.high, d.low]}>
                 <XAxis />
                 <YAxis />
                 <CandlestickSeries />
                 <LineSeries
-                  yAccessor={(d: any) => d.ma20}
+                  yAccessor={(d: ChartPoint) => d.ma20 ?? undefined}
                   strokeWidth={2}
                 />
               </Chart>
