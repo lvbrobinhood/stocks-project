@@ -4,7 +4,6 @@ from threading import Lock
 
 from flask import Flask, jsonify, request
 from flask_cors import CORS
-import pandas as pd
 import yfinance as yf
 
 app = Flask(__name__)
@@ -117,11 +116,9 @@ def stock_chart():
         return jsonify(cached)
 
     try:
-        hist = yf.Ticker(ticker).history(period="1y")
+        hist = yf.Ticker(ticker).history(period="2y")
         if hist.empty:
             return jsonify({"error": "ticker not found or no data"}), 404
-
-        hist["MA20"] = hist["Close"].rolling(window=20).mean()
 
         chart_data = [
             {
@@ -131,7 +128,6 @@ def stock_chart():
                 "low": float(row["Low"]),
                 "close": float(row["Close"]),
                 "volume": int(row["Volume"]),
-                "ma20": float(row["MA20"]) if pd.notna(row["MA20"]) else None,
             }
             for date, row in hist.iterrows()
         ]

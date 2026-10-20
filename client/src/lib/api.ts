@@ -22,7 +22,6 @@ export type ChartPoint = {
   low: number;
   close: number;
   volume: number;
-  ma20: number | null;
 };
 
 type ChartResponse = {
@@ -52,7 +51,7 @@ export function fetchProfile(ticker: string): Promise<ProfileResponse> {
   return getJson<ProfileResponse>(`/profile?ticker=${encodeURIComponent(ticker)}`);
 }
 
-/** One year of daily OHLCV plus a server-computed 20-day moving average. */
+/** Two years of daily OHLCV; moving averages are computed client-side. */
 export async function fetchStockChart(ticker: string): Promise<ChartPoint[]> {
   const res = await getJson<ChartResponse>(`/stock-chart?ticker=${encodeURIComponent(ticker)}`);
   return res.data.map((d) => ({ ...d, date: new Date(d.date) }));
