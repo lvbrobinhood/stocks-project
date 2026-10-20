@@ -322,11 +322,18 @@ a {
   margin-bottom: 18px;
 }
 
+.ma-add {
+  min-height: 36px;
+  padding: 0 14px;
+  margin-right: 6px;
+}
+
 .ma-control {
   display: inline-flex;
   align-items: center;
   gap: 6px;
   font-size: 0.9rem;
+  color: var(--ink-soft);
 }
 
 .ma-control input[type="number"] {
