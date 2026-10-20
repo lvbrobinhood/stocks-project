@@ -1,6 +1,6 @@
 import { fetchStockChart, type ChartPoint } from "../../lib/api";
 import { useMemo, useState } from "react";
-import { ChartCanvas, Chart, CandlestickSeries, LineSeries, XAxis, YAxis, CrossHairCursor } from "react-financial-charts";
+import { ChartCanvas, Chart, CandlestickSeries, LineSeries, XAxis, YAxis, CrossHairCursor, MovingAverageTooltip } from "react-financial-charts";
 import { discontinuousTimeScaleProvider, sma } from "react-financial-charts";
 import { useActiveTheme } from "../../lib/theme";
 
@@ -164,6 +164,18 @@ export default function Analysis() {
                   gridLinesStrokeStyle={palette.rule}
                 />
                 <CandlestickSeries fill={candleColor} stroke={candleColor} wickStroke={candleColor} />
+                <MovingAverageTooltip
+                  origin={[8, 8]}
+                  width={88}
+                  textFill={palette.ink}
+                  labelFill={palette.muted}
+                  options={averages.map((a) => ({
+                    yAccessor: (d: PlotPoint) => d.ma[a.window] as number,
+                    type: "SMA",
+                    stroke: a.color,
+                    windowSize: a.window,
+                  }))}
+                />
                 {averages.map((a, i) => (
                   <LineSeries
                     key={i}
