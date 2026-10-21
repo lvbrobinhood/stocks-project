@@ -366,8 +366,79 @@ a {
   padding: 0 4px;
 }
 
+.range-picker {
+  display: inline-flex;
+  margin-left: auto;
+  border: 1px solid var(--rule-strong);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.range-btn {
+  min-height: 36px;
+  padding: 0 12px;
+  border: none;
+  border-left: 1px solid var(--rule-strong);
+  background: transparent;
+  color: var(--ink-soft);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.range-btn:first-child {
+  border-left: none;
+}
+
+.range-btn.active {
+  background: var(--ink);
+  color: var(--paper);
+}
+
 .chart-panel {
-  overflow-x: auto;
+  position: relative;
+  height: 520px;
+}
+
+.chart-surface {
+  position: absolute;
+  inset: 0;
+}
+
+.chart-legend {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 1;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 0.8rem;
+  color: var(--ink-soft);
+}
+
+.chart-legend-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.chart-legend b {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.chart-legend .gain {
+  color: var(--gain);
+}
+
+.chart-legend .loss {
+  color: var(--loss);
+}
+
+.chart-legend-date {
+  font-weight: 600;
+  color: var(--ink);
 }
 
 .empty-state {
