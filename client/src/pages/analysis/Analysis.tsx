@@ -1,7 +1,7 @@
 import { fetchStockChart, type ChartPoint } from "../../lib/api";
 import { useState } from "react";
 import PriceChart from "./PriceChart";
-import { RANGE_KEYS, type MovingAverage, type RangeKey } from "./indicators";
+import { RANGE_KEYS, fiftyTwoWeekRange, type MovingAverage, type RangeKey } from "./indicators";
 
 const DEFAULT_AVERAGES: MovingAverage[] = [
   { window: 20, color: "#9e9e9e" },
@@ -36,6 +36,8 @@ export default function Analysis() {
   const removeAverage = (index: number) => setAverages((prev) => prev.filter((_, i) => i !== index));
   const addAverage = () => setAverages((prev) => [...prev, { window: 10, color: "#8e24aa" }]);
 
+  const range52w = fiftyTwoWeekRange(rawData);
+
   return (
     <main className="page-shell">
       <section className="page-heading">
@@ -65,10 +67,13 @@ export default function Analysis() {
           </button>
         </div>
 
-        <div className="ma-controls">
+        <div className="ma-toolbar">
           <button type="button" className="btn secondary ma-add" onClick={addAverage}>
             Add MA
           </button>
+        </div>
+
+        <div className="ma-controls">
           {averages.map((a, i) => (
             <label key={i} className="ma-control">
               <input
@@ -108,7 +113,21 @@ export default function Analysis() {
         {error && <p className="error">{error}</p>}
 
         {rawData.length > 0 ? (
-          <PriceChart data={rawData} averages={averages} range={range} />
+          <>
+            <PriceChart data={rawData} averages={averages} range={range} />
+            {range52w && (
+              <div className="key-stats">
+                <div className="stat">
+                  <span className="stat-label">52W high</span>
+                  <span className="stat-value">{range52w.high.toFixed(2)}</span>
+                </div>
+                <div className="stat">
+                  <span className="stat-label">52W low</span>
+                  <span className="stat-value">{range52w.low.toFixed(2)}</span>
+                </div>
+              </div>
+            )}
+          </>
         ) : (
           <div className="empty-state">Enter a ticker to load a chart.</div>
         )}

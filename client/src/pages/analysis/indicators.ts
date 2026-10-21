@@ -17,3 +17,18 @@ export function simpleMovingAverage(data: ChartPoint[], window: number): (number
   }
   return out;
 }
+
+/** Highest high and lowest low over the trailing 52 weeks ending at the last bar. */
+export function fiftyTwoWeekRange(data: ChartPoint[]): { high: number; low: number } | null {
+  if (data.length === 0) return null;
+  const from = new Date(data[data.length - 1].date);
+  from.setFullYear(from.getFullYear() - 1);
+  let high = -Infinity;
+  let low = Infinity;
+  for (const d of data) {
+    if (d.date < from) continue;
+    if (d.high > high) high = d.high;
+    if (d.low < low) low = d.low;
+  }
+  return { high, low };
+}

@@ -322,10 +322,13 @@ a {
   margin-bottom: 18px;
 }
 
+.ma-toolbar {
+  margin-bottom: 12px;
+}
+
 .ma-add {
   min-height: 36px;
   padding: 0 14px;
-  margin-right: 6px;
 }
 
 .ma-control {
@@ -439,6 +442,36 @@ a {
 .chart-legend-date {
   font-weight: 600;
   color: var(--ink);
+}
+
+.key-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 12px;
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid var(--rule);
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.stat-label {
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.stat-value {
+  color: var(--ink);
+  font-size: 1.25rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
 }
 
 .empty-state {
