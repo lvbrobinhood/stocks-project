@@ -15,6 +15,12 @@ export type ProfileResponse = {
   sector: string;
 };
 
+export type StatsResponse = {
+  ticker: string;
+  fiftyTwoWeekHigh: number;
+  fiftyTwoWeekLow: number;
+};
+
 export type ChartPoint = {
   date: Date;
   open: number;
@@ -49,6 +55,11 @@ export function fetchQuote(ticker: string): Promise<QuoteResponse> {
 /** Sector for equities; quote type (ETF, fund, crypto) for everything else. */
 export function fetchProfile(ticker: string): Promise<ProfileResponse> {
   return getJson<ProfileResponse>(`/profile?ticker=${encodeURIComponent(ticker)}`);
+}
+
+/** Key stats from Yahoo: 52-week high and low. */
+export function fetchStats(ticker: string): Promise<StatsResponse> {
+  return getJson<StatsResponse>(`/stats?ticker=${encodeURIComponent(ticker)}`);
 }
 
 /** Two years of daily OHLCV; moving averages are computed client-side. */

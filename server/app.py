@@ -16,6 +16,7 @@ CORS(app, origins=[o.strip() for o in _origins.split(",") if o.strip()])
 QUOTE_TTL_SECONDS = int(os.environ.get("QUOTE_TTL_SECONDS", "60"))
 CHART_TTL_SECONDS = int(os.environ.get("CHART_TTL_SECONDS", "900"))
 PROFILE_TTL_SECONDS = int(os.environ.get("PROFILE_TTL_SECONDS", "86400"))
+STATS_TTL_SECONDS = int(os.environ.get("STATS_TTL_SECONDS", "900"))
 
 _ALLOWED_TICKER_CHARS = set("ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.-^=")
 
@@ -103,6 +104,35 @@ def profile():
         return jsonify(payload)
     except Exception as e:
         return jsonify({"error": f"failed to fetch profile: {e}"}), 500
+
+
+@app.get("/stats")
+def stats():
+    ticker, err = _read_ticker()
+    if err:
+        return err
+
+    cached = _cache_get(f"stats:{ticker}")
+    if cached is not None:
+        return jsonify(cached)
+
+    try:
+        # fast_info derives these from price history and avoids the heavily
+        # rate-limited quoteSummary endpoint behind Ticker.info.
+        info = yf.Ticker(ticker).fast_info
+        high, low = info.year_high, info.year_low
+        if high is None or low is None:
+            return jsonify({"error": "ticker not found or no data"}), 404
+
+        payload = {
+            "ticker": ticker,
+            "fiftyTwoWeekHigh": float(high),
+            "fiftyTwoWeekLow": float(low),
+        }
+        _cache_set(f"stats:{ticker}", payload, STATS_TTL_SECONDS)
+        return jsonify(payload)
+    except Exception as e:
+        return jsonify({"error": f"failed to fetch stats: {e}"}), 500
 
 
 @app.get("/stock-chart")

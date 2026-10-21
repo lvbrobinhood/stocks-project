@@ -1,7 +1,7 @@
-import { fetchStockChart, type ChartPoint } from "../../lib/api";
+import { fetchStockChart, fetchStats, type ChartPoint, type StatsResponse } from "../../lib/api";
 import { useState } from "react";
 import PriceChart from "./PriceChart";
-import { RANGE_KEYS, fiftyTwoWeekRange, type MovingAverage, type RangeKey } from "./indicators";
+import { RANGE_KEYS, type MovingAverage, type RangeKey } from "./indicators";
 
 const DEFAULT_AVERAGES: MovingAverage[] = [
   { window: 20, color: "#9e9e9e" },
@@ -13,6 +13,7 @@ const DEFAULT_AVERAGES: MovingAverage[] = [
 export default function Analysis() {
   const [ticker, setTicker] = useState("");
   const [rawData, setRawData] = useState<ChartPoint[]>([]);
+  const [stats, setStats] = useState<StatsResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [averages, setAverages] = useState<MovingAverage[]>(DEFAULT_AVERAGES);
@@ -23,7 +24,10 @@ export default function Analysis() {
     setLoading(true);
     setError("");
     try {
-      setRawData(await fetchStockChart(ticker));
+      // Stats are secondary: a failure there should not block the chart.
+      const [chart, keyStats] = await Promise.all([fetchStockChart(ticker), fetchStats(ticker).catch(() => null)]);
+      setRawData(chart);
+      setStats(keyStats);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to load chart.");
     } finally {
@@ -35,8 +39,6 @@ export default function Analysis() {
     setAverages((prev) => prev.map((a, i) => (i === index ? { ...a, ...patch } : a)));
   const removeAverage = (index: number) => setAverages((prev) => prev.filter((_, i) => i !== index));
   const addAverage = () => setAverages((prev) => [...prev, { window: 10, color: "#8e24aa" }]);
-
-  const range52w = fiftyTwoWeekRange(rawData);
 
   return (
     <main className="page-shell">
@@ -115,15 +117,15 @@ export default function Analysis() {
         {rawData.length > 0 ? (
           <>
             <PriceChart data={rawData} averages={averages} range={range} />
-            {range52w && (
+            {stats && (
               <div className="key-stats">
                 <div className="stat">
                   <span className="stat-label">52W high</span>
-                  <span className="stat-value">{range52w.high.toFixed(2)}</span>
+                  <span className="stat-value">{stats.fiftyTwoWeekHigh.toFixed(2)}</span>
                 </div>
                 <div className="stat">
                   <span className="stat-label">52W low</span>
-                  <span className="stat-value">{range52w.low.toFixed(2)}</span>
+                  <span className="stat-value">{stats.fiftyTwoWeekLow.toFixed(2)}</span>
                 </div>
               </div>
             )}
