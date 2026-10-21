@@ -369,9 +369,14 @@ a {
   padding: 0 4px;
 }
 
+.range-row {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 12px;
+}
+
 .range-picker {
   display: inline-flex;
-  margin-left: auto;
   border: 1px solid var(--rule-strong);
   border-radius: 4px;
   overflow: hidden;

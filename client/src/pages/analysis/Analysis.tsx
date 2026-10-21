@@ -98,6 +98,9 @@ export default function Analysis() {
               </button>
             </label>
           ))}
+        </div>
+
+        <div className="range-row">
           <div className="range-picker">
             {RANGE_KEYS.map((key) => (
               <button
