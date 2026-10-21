@@ -120,14 +120,17 @@ def stats():
         # fast_info derives these from price history and avoids the heavily
         # rate-limited quoteSummary endpoint behind Ticker.info.
         info = yf.Ticker(ticker).fast_info
-        high, low = info.year_high, info.year_low
-        if high is None or low is None:
+        values = (info.day_high, info.day_low, info.year_high, info.year_low)
+        if any(v is None for v in values):
             return jsonify({"error": "ticker not found or no data"}), 404
 
+        day_high, day_low, year_high, year_low = values
         payload = {
             "ticker": ticker,
-            "fiftyTwoWeekHigh": float(high),
-            "fiftyTwoWeekLow": float(low),
+            "dayHigh": float(day_high),
+            "dayLow": float(day_low),
+            "fiftyTwoWeekHigh": float(year_high),
+            "fiftyTwoWeekLow": float(year_low),
         }
         _cache_set(f"stats:{ticker}", payload, STATS_TTL_SECONDS)
         return jsonify(payload)

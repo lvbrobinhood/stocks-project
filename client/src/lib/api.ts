@@ -17,6 +17,8 @@ export type ProfileResponse = {
 
 export type StatsResponse = {
   ticker: string;
+  dayHigh: number;
+  dayLow: number;
   fiftyTwoWeekHigh: number;
   fiftyTwoWeekLow: number;
 };
@@ -57,7 +59,7 @@ export function fetchProfile(ticker: string): Promise<ProfileResponse> {
   return getJson<ProfileResponse>(`/profile?ticker=${encodeURIComponent(ticker)}`);
 }
 
-/** Key stats from Yahoo: 52-week high and low. */
+/** Key stats from Yahoo: day and 52-week high and low. */
 export function fetchStats(ticker: string): Promise<StatsResponse> {
   return getJson<StatsResponse>(`/stats?ticker=${encodeURIComponent(ticker)}`);
 }

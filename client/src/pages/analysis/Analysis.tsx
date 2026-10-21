@@ -120,6 +120,14 @@ export default function Analysis() {
             {stats && (
               <div className="key-stats">
                 <div className="stat">
+                  <span className="stat-label">Day high</span>
+                  <span className="stat-value">{stats.dayHigh.toFixed(2)}</span>
+                </div>
+                <div className="stat">
+                  <span className="stat-label">Day low</span>
+                  <span className="stat-value">{stats.dayLow.toFixed(2)}</span>
+                </div>
+                <div className="stat">
                   <span className="stat-label">52W high</span>
                   <span className="stat-value">{stats.fiftyTwoWeekHigh.toFixed(2)}</span>
                 </div>
