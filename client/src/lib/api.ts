@@ -37,14 +37,30 @@ type ChartResponse = {
   data: (Omit<ChartPoint, "date"> & { date: string })[];
 };
 
-/** Fetch a JSON endpoint, surfacing the server's `error` message on a non-OK response. */
+/**
+ * Fetch a JSON endpoint, surfacing the server's `error` message on a non-OK response.
+ * A body that is not JSON (for example an HTML page from a misconfigured API base or a
+ * host placeholder) is reported as an error instead of being passed through to callers.
+ */
 async function getJson<T>(path: string): Promise<T> {
-  const res = await fetch(`${API_BASE}${path}`);
-  const data: unknown = await res.json().catch(() => ({}));
+  const url = `${API_BASE}${path}`;
+  const res = await fetch(url);
+  const text = await res.text();
+
+  let data: unknown;
+  try {
+    data = JSON.parse(text);
+  } catch {
+    data = undefined;
+  }
 
   if (!res.ok) {
-    const err = (data as { error?: unknown })?.error;
+    const err = (data as { error?: unknown } | undefined)?.error;
     throw new Error(typeof err === "string" ? err : `Request failed (${res.status})`);
+  }
+
+  if (data === null || typeof data !== "object") {
+    throw new Error(`Unexpected non-JSON response from ${url} (${res.status}). Check VITE_API_BASE.`);
   }
 
   return data as T;
@@ -67,5 +83,8 @@ export function fetchStats(ticker: string): Promise<StatsResponse> {
 /** Two years of daily OHLCV; moving averages are computed client-side. */
 export async function fetchStockChart(ticker: string): Promise<ChartPoint[]> {
   const res = await getJson<ChartResponse>(`/stock-chart?ticker=${encodeURIComponent(ticker)}`);
+  if (!Array.isArray(res.data)) {
+    throw new Error("Chart response is missing price data.");
+  }
   return res.data.map((d) => ({ ...d, date: new Date(d.date) }));
 }
