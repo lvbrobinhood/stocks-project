@@ -140,6 +140,8 @@ const SECTOR_OPTIONS = [
 ];
 
 const PNL_SCALE_MAX = 500;
+/** Cash assumed available in the what-if table; the default buy is what it affords. */
+const WHAT_IF_BUDGET = 800;
 const PCT_SCALE_MAX = 30;
 
 /**
@@ -791,7 +793,14 @@ export default function PortfolioPage() {
                           <input
                             type="checkbox"
                             checked={h.buyMore !== null}
-                            onChange={(e) => saveBuyMore(h.ticker, e.target.checked ? 1 : null)}
+                            onChange={(e) =>
+                              saveBuyMore(
+                                h.ticker,
+                                e.target.checked
+                                  ? Math.max(1, Math.floor(WHAT_IF_BUDGET / (h.price || WHAT_IF_BUDGET)))
+                                  : null
+                              )
+                            }
                           />
                           {h.ticker}
                         </label>
