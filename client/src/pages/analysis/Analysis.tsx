@@ -1,7 +1,7 @@
 import { fetchStockChart, fetchStats, type ChartPoint, type StatsResponse } from "../../lib/api";
 import { useState } from "react";
 import PriceChart from "./PriceChart";
-import { RANGE_KEYS, SIGNAL_WINDOWS, movingAverageSignal, type MovingAverage, type RangeKey } from "./indicators";
+import { RANGE_KEYS, SIGNAL_PARAMS, SIGNAL_WINDOWS, movingAverageSignal, type MovingAverage, type RangeKey } from "./indicators";
 
 const DEFAULT_AVERAGES: MovingAverage[] = [
   { window: 20, color: "#9e9e9e" },
@@ -156,7 +156,7 @@ export default function Analysis() {
                         Price {Math.abs(result.distancePct).toFixed(2)}% {result.distancePct >= 0 ? "above" : "below"} the {window}MA
                       </span>
                       <span className="signal-detail">
-                        {window}MA {signed(result.slopePct)} over 5 days
+                        {window}MA {signed(result.slopePct)} over {result.params.slopeLookback} days
                       </span>
                     </>
                   ) : (
@@ -170,6 +170,20 @@ export default function Analysis() {
           <div className="empty-state">Enter a ticker to load a chart.</div>
         )}
       </section>
+
+      <p className="page-note">
+        Indicator thresholds. Price within the band of its moving average counts as at the line; a change in the
+        average within the slope band over the lookback counts as flat.{" "}
+        {SIGNAL_WINDOWS.map((w, i) => {
+          const p = SIGNAL_PARAMS[w];
+          return (
+            <span key={w}>
+              {i > 0 && " · "}
+              {w}MA: ±{p.priceBandPct}% price, ±{p.slopeBandPct}% slope over {p.slopeLookback} days
+            </span>
+          );
+        })}
+      </p>
     </main>
   );
 }

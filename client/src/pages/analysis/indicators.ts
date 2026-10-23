@@ -25,16 +25,44 @@ export type MovingAverageSignal = {
   signal: Signal;
   /** Last close relative to the moving average, in percent. Positive means above. */
   distancePct: number;
-  /** Moving average relative to its value SLOPE_LOOKBACK bars earlier, in percent. */
+  /** Moving average relative to its value `slopeLookback` bars earlier, in percent. */
   slopePct: number;
+  /** The thresholds used for this window. */
+  params: SignalParams;
+};
+
+export type SignalParams = {
+  /** Bars between the two moving average values compared for slope. */
+  slopeLookback: number;
+  /** Within this band, in percent, price counts as "at the line". */
+  priceBandPct: number;
+  /** Within this band, in percent, the moving average counts as flat. */
+  slopeBandPct: number;
 };
 
 export const SIGNAL_WINDOWS = [20, 50, 100, 200] as const;
-const SLOPE_LOOKBACK = 5;
-/** Within this band price counts as "at the line". */
-const PRICE_BAND_PCT = 1.0;
-/** Within this band the moving average counts as flat. */
-const SLOPE_BAND_PCT = 0.25;
+
+/**
+ * Thresholds per window. Longer averages move more slowly and price naturally
+ * sits further from them, so the lookback and both bands widen with the window.
+ */
+export const SIGNAL_PARAMS: Record<number, SignalParams> = {
+  20: { slopeLookback: 5, priceBandPct: 1, slopeBandPct: 0.25 },
+  50: { slopeLookback: 12, priceBandPct: 1.5, slopeBandPct: 0.5 },
+  100: { slopeLookback: 25, priceBandPct: 2, slopeBandPct: 0.75 },
+  200: { slopeLookback: 50, priceBandPct: 3, slopeBandPct: 1 },
+};
+
+/** Parameters for a window not in the table: a quarter of the window for the lookback. */
+function paramsFor(window: number): SignalParams {
+  return (
+    SIGNAL_PARAMS[window] ?? {
+      slopeLookback: Math.max(1, Math.round(window / 4)),
+      priceBandPct: 1,
+      slopeBandPct: 0.25,
+    }
+  );
+}
 
 /**
  * Classify a moving average as a positive, neutral or negative indicator.
@@ -43,21 +71,22 @@ const SLOPE_BAND_PCT = 0.25;
  * is always neutral.
  */
 export function movingAverageSignal(data: ChartPoint[], window: number): MovingAverageSignal | null {
+  const params = paramsFor(window);
   const ma = simpleMovingAverage(data, window);
   const last = data.length - 1;
   const current = ma[last];
-  const earlier = ma[last - SLOPE_LOOKBACK];
+  const earlier = ma[last - params.slopeLookback];
   if (current === undefined || earlier === undefined) return null;
 
   const distancePct = ((data[last].close - current) / current) * 100;
   const slopePct = ((current - earlier) / earlier) * 100;
 
-  const priceSide = distancePct > PRICE_BAND_PCT ? "above" : distancePct < -PRICE_BAND_PCT ? "below" : "at";
-  const trend = slopePct > SLOPE_BAND_PCT ? "rising" : slopePct < -SLOPE_BAND_PCT ? "falling" : "flat";
+  const priceSide = distancePct > params.priceBandPct ? "above" : distancePct < -params.priceBandPct ? "below" : "at";
+  const trend = slopePct > params.slopeBandPct ? "rising" : slopePct < -params.slopeBandPct ? "falling" : "flat";
 
   let signal: Signal = "neutral";
   if (priceSide === "above" && trend !== "falling") signal = "positive";
   else if (priceSide === "below" && trend !== "rising") signal = "negative";
 
-  return { signal, distancePct, slopePct };
+  return { signal, distancePct, slopePct, params };
 }
