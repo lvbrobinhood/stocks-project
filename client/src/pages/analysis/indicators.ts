@@ -29,7 +29,7 @@ export type MovingAverageSignal = {
   slopePct: number;
 };
 
-export const SIGNAL_WINDOW = 20;
+export const SIGNAL_WINDOWS = [20, 50, 100, 200] as const;
 const SLOPE_LOOKBACK = 5;
 /** Within this band price counts as "at the line". */
 const PRICE_BAND_PCT = 1.0;
@@ -37,12 +37,12 @@ const PRICE_BAND_PCT = 1.0;
 const SLOPE_BAND_PCT = 0.25;
 
 /**
- * Classify the 20-day moving average as a positive, neutral or negative indicator.
+ * Classify a moving average as a positive, neutral or negative indicator.
  * Price position drives the call; slope only vetoes it. Price above a falling
  * average, or below a rising one, is downgraded to neutral. Price at the line
  * is always neutral.
  */
-export function movingAverageSignal(data: ChartPoint[], window = SIGNAL_WINDOW): MovingAverageSignal | null {
+export function movingAverageSignal(data: ChartPoint[], window: number): MovingAverageSignal | null {
   const ma = simpleMovingAverage(data, window);
   const last = data.length - 1;
   const current = ma[last];

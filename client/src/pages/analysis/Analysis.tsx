@@ -1,7 +1,7 @@
 import { fetchStockChart, fetchStats, type ChartPoint, type StatsResponse } from "../../lib/api";
 import { useState } from "react";
 import PriceChart from "./PriceChart";
-import { RANGE_KEYS, SIGNAL_WINDOW, movingAverageSignal, type MovingAverage, type RangeKey } from "./indicators";
+import { RANGE_KEYS, SIGNAL_WINDOWS, movingAverageSignal, type MovingAverage, type RangeKey } from "./indicators";
 
 const DEFAULT_AVERAGES: MovingAverage[] = [
   { window: 20, color: "#9e9e9e" },
@@ -40,7 +40,7 @@ export default function Analysis() {
   const removeAverage = (index: number) => setAverages((prev) => prev.filter((_, i) => i !== index));
   const addAverage = () => setAverages((prev) => [...prev, { window: 10, color: "#8e24aa" }]);
 
-  const maSignal = movingAverageSignal(rawData);
+  const maSignals = SIGNAL_WINDOWS.map((window) => ({ window, result: movingAverageSignal(rawData, window) }));
   const signed = (n: number) => `${n >= 0 ? "+" : ""}${n.toFixed(2)}%`;
 
   return (
@@ -144,22 +144,26 @@ export default function Analysis() {
               </div>
             )}
             <div className="signals">
-              <div className="signal">
-                <span className="stat-label">{SIGNAL_WINDOW}-day MA indicator</span>
-                {maSignal ? (
-                  <>
-                    <span className={`signal-value ${maSignal.signal}`}>
-                      {maSignal.signal.charAt(0).toUpperCase() + maSignal.signal.slice(1)}
-                    </span>
-                    <span className="signal-detail">
-                      Price {Math.abs(maSignal.distancePct).toFixed(2)}% {maSignal.distancePct >= 0 ? "above" : "below"} the{" "}
-                      {SIGNAL_WINDOW}MA. {SIGNAL_WINDOW}MA {signed(maSignal.slopePct)} over 5 days.
-                    </span>
-                  </>
-                ) : (
-                  <span className="signal-detail">Not enough data.</span>
-                )}
-              </div>
+              {maSignals.map(({ window, result }) => (
+                <div key={window} className="signal">
+                  <span className="stat-label">{window}-day MA indicator</span>
+                  {result ? (
+                    <>
+                      <span className={`signal-value ${result.signal}`}>
+                        {result.signal.charAt(0).toUpperCase() + result.signal.slice(1)}
+                      </span>
+                      <span className="signal-detail">
+                        Price {Math.abs(result.distancePct).toFixed(2)}% {result.distancePct >= 0 ? "above" : "below"} the {window}MA
+                      </span>
+                      <span className="signal-detail">
+                        {window}MA {signed(result.slopePct)} over 5 days
+                      </span>
+                    </>
+                  ) : (
+                    <span className="signal-detail">Not enough data.</span>
+                  )}
+                </div>
+              ))}
             </div>
           </>
         ) : (
