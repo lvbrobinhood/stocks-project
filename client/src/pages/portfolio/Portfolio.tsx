@@ -773,10 +773,9 @@ export default function PortfolioPage() {
 
           <section className="ledger what-if" aria-label="Average cost after buying more">
             <div className="section-heading">
-              <h2>If I buy more</h2>
               <div className="what-if-picker" ref={pickerRef}>
                 <button
-                  className="btn secondary"
+                  className="what-if-title"
                   type="button"
                   onClick={() => setPickerOpen((open) => !open)}
                   aria-haspopup="listbox"

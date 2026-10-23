@@ -298,9 +298,22 @@
   position: relative;
 }
 
+/* The dropdown doubles as the section title */
+.what-if-title {
+  border: 0;
+  padding: 0;
+  color: var(--ink);
+  background: transparent;
+  font: inherit;
+  font-size: 1.1rem;
+  font-weight: 700;
+  font-variation-settings: "wdth" 112;
+  cursor: pointer;
+}
+
 .what-if-menu {
   position: absolute;
-  right: 0;
+  left: 0;
   z-index: 10;
   min-width: 160px;
   max-height: 280px;
