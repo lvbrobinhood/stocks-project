@@ -479,6 +479,43 @@ a {
   font-variant-numeric: tabular-nums;
 }
 
+.signals {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 12px;
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid var(--rule);
+}
+
+.signal {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.signal-value {
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+.signal-value.positive {
+  color: var(--gain);
+}
+
+.signal-value.neutral {
+  color: var(--muted);
+}
+
+.signal-value.negative {
+  color: var(--loss);
+}
+
+.signal-detail {
+  color: var(--ink-soft);
+  font-size: 0.9rem;
+}
+
 .empty-state {
   border: 1px dashed var(--rule-strong);
   border-radius: 4px;

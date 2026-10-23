@@ -1,7 +1,7 @@
 import { fetchStockChart, fetchStats, type ChartPoint, type StatsResponse } from "../../lib/api";
 import { useState } from "react";
 import PriceChart from "./PriceChart";
-import { RANGE_KEYS, type MovingAverage, type RangeKey } from "./indicators";
+import { RANGE_KEYS, SIGNAL_WINDOW, movingAverageSignal, type MovingAverage, type RangeKey } from "./indicators";
 
 const DEFAULT_AVERAGES: MovingAverage[] = [
   { window: 20, color: "#9e9e9e" },
@@ -39,6 +39,9 @@ export default function Analysis() {
     setAverages((prev) => prev.map((a, i) => (i === index ? { ...a, ...patch } : a)));
   const removeAverage = (index: number) => setAverages((prev) => prev.filter((_, i) => i !== index));
   const addAverage = () => setAverages((prev) => [...prev, { window: 10, color: "#8e24aa" }]);
+
+  const maSignal = movingAverageSignal(rawData);
+  const signed = (n: number) => `${n >= 0 ? "+" : ""}${n.toFixed(2)}%`;
 
   return (
     <main className="page-shell">
@@ -140,6 +143,24 @@ export default function Analysis() {
                 </div>
               </div>
             )}
+            <div className="signals">
+              <div className="signal">
+                <span className="stat-label">{SIGNAL_WINDOW}-day MA indicator</span>
+                {maSignal ? (
+                  <>
+                    <span className={`signal-value ${maSignal.signal}`}>
+                      {maSignal.signal.charAt(0).toUpperCase() + maSignal.signal.slice(1)}
+                    </span>
+                    <span className="signal-detail">
+                      Price {Math.abs(maSignal.distancePct).toFixed(2)}% {maSignal.distancePct >= 0 ? "above" : "below"} the{" "}
+                      {SIGNAL_WINDOW}MA. {SIGNAL_WINDOW}MA {signed(maSignal.slopePct)} over 5 days.
+                    </span>
+                  </>
+                ) : (
+                  <span className="signal-detail">Not enough data.</span>
+                )}
+              </div>
+            </div>
           </>
         ) : (
           <div className="empty-state">Enter a ticker to load a chart.</div>
