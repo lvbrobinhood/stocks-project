@@ -75,22 +75,28 @@ function hashInt(str: string): number {
 }
 
 /**
- * Colours by slice position: hues step around the wheel by the golden angle,
- * so neighbouring slices are always ~137° apart, and lightness alternates to
- * separate them further. The starting hue is anchored to the largest holding.
+ * Colours by slice position. Hues are spread evenly around the wheel, then
+ * dealt to slices with a stride of about n/2 (coprime with n) so that every
+ * neighbouring pair, including the last slice wrapping round to the first, is
+ * close to 180° apart. OKLCH keeps the spacing perceptually even, so greens do
+ * not take up a disproportionate share of the wheel. The starting hue is
+ * anchored to the largest holding.
  */
 function generateDistinctColors(labels: string[]) {
-  const base = labels.length ? hashInt(labels[0]) % 360 : 0;
-  const goldenAngle = 137.508;
+  const n = labels.length;
+  const base = n ? hashInt(labels[n - 1]) % 360 : 0;
+
+  const gcd = (a: number, b: number): number => (b === 0 ? a : gcd(b, a % b));
+  let stride = Math.max(1, Math.round(n / 2));
+  while (n > 2 && gcd(stride, n) !== 1) stride -= 1;
 
   return labels.map((_, i) => {
-    const hue = (base + i * goldenAngle) % 360;
-    const light = i % 2 === 0 ? 46 : 60;
-    const sat = i % 2 === 0 ? 70 : 78;
+    const hue = (base + ((i * stride) % n) * (360 / n)) % 360;
+    const light = i % 2 === 0 ? 0.62 : 0.72;
 
     return {
-      bg: `hsl(${hue.toFixed(1)} ${sat}% ${light}%)`,
-      border: `hsl(${hue.toFixed(1)} ${sat}% ${Math.max(light - 20, 22)}%)`,
+      bg: `oklch(${light} 0.17 ${hue.toFixed(1)})`,
+      border: `oklch(${light - 0.15} 0.17 ${hue.toFixed(1)})`,
     };
   });
 }
