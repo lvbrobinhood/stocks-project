@@ -195,6 +195,7 @@ export default function PortfolioPage() {
   const [sortKey, setSortKey] = useState<SortKey>("ticker");
   const activeTheme = useActiveTheme();
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
+  const [whatIfQty, setWhatIfQty] = useState<Record<string, string>>({});
 
 
   function parsePositiveNumber(input: string): number | null {
@@ -518,6 +519,19 @@ export default function PortfolioPage() {
     };
   }, [enriched]);
 
+  // Hypothetical: average cost per share after buying more at the current price.
+  const whatIfRows = sortedHoldings.map((h) => {
+    const buy = parsePositiveNumber((whatIfQty[h.ticker] ?? "1").trim());
+    const newCost =
+      buy !== null && h.price !== undefined
+        ? (h.qty * h.costPrice + buy * h.price) / (h.qty + buy)
+        : undefined;
+    const change = newCost !== undefined ? newCost - h.costPrice : undefined;
+    const changePct =
+      change !== undefined && h.costPrice > 0 ? (change / h.costPrice) * 100 : undefined;
+    return { ...h, newCost, change, changePct };
+  });
+
   const pricedHoldings = enriched.filter((h) => h.marketValue !== undefined);
   const missingQuoteCount = enriched.length - pricedHoldings.length;
   const allQuotesLoaded = enriched.length > 0 && missingQuoteCount === 0;
@@ -726,6 +740,55 @@ export default function PortfolioPage() {
             </div>
           </section>
           </div>
+
+          <section className="ledger what-if" aria-label="Average cost after buying more">
+            <div className="section-heading">
+              <h2>If I buy more</h2>
+              <p>Average cost after buying at the current price</p>
+            </div>
+            <div className="table-scroll">
+              <table>
+                <thead>
+                  <tr>
+                    <th scope="col">Stock</th>
+                    <th scope="col" className="num">Buy</th>
+                    <th scope="col" className="num">New Avg Cost</th>
+                    <th scope="col" className="num">Current Avg Cost</th>
+                    <th scope="col" className="num">Change</th>
+                    <th scope="col" className="num">%</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {whatIfRows.map((h) => (
+                    <tr key={h.ticker}>
+                      <th scope="row">{h.ticker}</th>
+                      <td className="num">
+                        <input
+                          className="what-if-qty"
+                          value={whatIfQty[h.ticker] ?? "1"}
+                          onChange={(e) =>
+                            setWhatIfQty((prev) => ({ ...prev, [h.ticker]: e.target.value }))
+                          }
+                          inputMode="decimal"
+                          aria-label={`Shares of ${h.ticker} to buy`}
+                        />
+                      </td>
+                      <td className="num">
+                        {h.newCost === undefined ? <em>{h.price === undefined ? "No price" : "—"}</em> : money(h.newCost, currency)}
+                      </td>
+                      <td className="num">{money(h.costPrice, currency)}</td>
+                      <td className="num" style={scaleColor(h.change, PNL_SCALE_MAX)}>
+                        {h.change === undefined ? <em>—</em> : signed(h.change, currency)}
+                      </td>
+                      <td className="num" style={scaleColor(h.changePct, PCT_SCALE_MAX)}>
+                        {h.changePct === undefined ? <em>—</em> : signedPct(h.changePct)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
 
           <section className="allocation sector-allocation" aria-label="Sector allocation">
             <div className="section-heading">

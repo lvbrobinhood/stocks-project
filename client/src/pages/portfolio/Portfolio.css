@@ -281,6 +281,25 @@
   margin-top: 32px;
 }
 
+/* What-if table: same ledger rules, a narrow input per row */
+.what-if {
+  margin-top: 32px;
+}
+
+.what-if table {
+  min-width: 520px;
+}
+
+.what-if .section-heading {
+  border-bottom: 0;
+}
+
+.what-if-qty {
+  width: 72px;
+  min-height: 34px;
+  text-align: right;
+}
+
 .sector-body {
   display: grid;
   grid-template-columns: minmax(280px, 480px) minmax(0, 1fr);
