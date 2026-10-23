@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type CSSProperties, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type FormEvent } from "react";
 import { supabase } from "../../lib/supabaseClient";
 import { fetchProfile, fetchQuote, type QuoteResponse } from "../../lib/api";
 import { useActiveTheme } from "../../lib/theme";
@@ -54,6 +54,8 @@ type Holding = {
   qty: number;
   costPrice: number;
   sector: string | null;
+  /** Hypothetical shares to buy in the what-if table; null when not selected. */
+  buyMore: number | null;
 };
 
 type HoldingWithQuote = Holding & {
@@ -196,6 +198,8 @@ export default function PortfolioPage() {
   const activeTheme = useActiveTheme();
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
   const [whatIfQty, setWhatIfQty] = useState<Record<string, string>>({});
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const pickerRef = useRef<HTMLDivElement>(null);
 
 
   function parsePositiveNumber(input: string): number | null {
@@ -231,6 +235,7 @@ export default function PortfolioPage() {
           qty: h.qty,
           cost_price: h.costPrice,
           sector: h.sector,
+          buy_more: h.buyMore,
         },
         { onConflict: "user_id,ticker" }
       );
@@ -260,7 +265,7 @@ export default function PortfolioPage() {
 
         const { data, error } = await supabase
           .from("portfolio_holdings")
-          .select("ticker, qty, cost_price, sector")
+          .select("ticker, qty, cost_price, sector, buy_more")
           .eq("user_id", userId)
           .order("ticker", { ascending: true });
 
@@ -271,6 +276,7 @@ export default function PortfolioPage() {
           qty: Number(r.qty),
           costPrice: Number(r.cost_price),
           sector: r.sector ? String(r.sector) : null,
+          buyMore: r.buy_more === null || r.buy_more === undefined ? null : Number(r.buy_more),
         }));
 
         setPortfolio(holdings);
@@ -326,9 +332,9 @@ export default function PortfolioPage() {
         ? (() => {
             const newQty = existing.qty + q;
             const newAvgCost = (existing.qty * existing.costPrice + q * c) / newQty;
-            return { ticker: t, qty: newQty, costPrice: newAvgCost, sector: resolvedSector };
+            return { ticker: t, qty: newQty, costPrice: newAvgCost, sector: resolvedSector, buyMore: existing.buyMore };
           })()
-        : { ticker: t, qty: q, costPrice: c, sector: resolvedSector };
+        : { ticker: t, qty: q, costPrice: c, sector: resolvedSector, buyMore: null };
 
       await upsertHoldingToSupabase(updatedHolding);
 
@@ -394,6 +400,28 @@ export default function PortfolioPage() {
     }
     setLoading(false);
   }
+
+  // Saves the what-if selection and share count on the holding so it follows the account.
+  async function saveBuyMore(t: string, buyMore: number | null) {
+    const h = portfolio.find((x) => x.ticker === t);
+    if (!h || h.buyMore === buyMore) return;
+    const updated = { ...h, buyMore };
+    setPortfolio((prev) => prev.map((x) => (x.ticker === t ? updated : x)));
+    try {
+      await upsertHoldingToSupabase(updated);
+    } catch (e: any) {
+      setError(e?.message ?? "Failed to save selection.");
+    }
+  }
+
+  useEffect(() => {
+    if (!pickerOpen) return;
+    function onClickOutside(e: MouseEvent) {
+      if (!pickerRef.current?.contains(e.target as Node)) setPickerOpen(false);
+    }
+    document.addEventListener("mousedown", onClickOutside);
+    return () => document.removeEventListener("mousedown", onClickOutside);
+  }, [pickerOpen]);
 
   async function removeHolding(t: string) {
     setLoading(true);
@@ -520,17 +548,19 @@ export default function PortfolioPage() {
   }, [enriched]);
 
   // Hypothetical: average cost per share after buying more at the current price.
-  const whatIfRows = sortedHoldings.map((h) => {
-    const buy = parsePositiveNumber((whatIfQty[h.ticker] ?? "1").trim());
-    const newCost =
-      buy !== null && h.price !== undefined
-        ? (h.qty * h.costPrice + buy * h.price) / (h.qty + buy)
-        : undefined;
-    const change = newCost !== undefined ? newCost - h.costPrice : undefined;
-    const changePct =
-      change !== undefined && h.costPrice > 0 ? (change / h.costPrice) * 100 : undefined;
-    return { ...h, newCost, change, changePct };
-  });
+  const whatIfRows = sortedHoldings
+    .filter((h) => h.buyMore !== null)
+    .map((h) => {
+      const buy = parsePositiveNumber((whatIfQty[h.ticker] ?? String(h.buyMore)).trim());
+      const newCost =
+        buy !== null && h.price !== undefined
+          ? (h.qty * h.costPrice + buy * h.price) / (h.qty + buy)
+          : undefined;
+      const change = newCost !== undefined ? newCost - h.costPrice : undefined;
+      const changePct =
+        change !== undefined && h.costPrice > 0 ? (change / h.costPrice) * 100 : undefined;
+      return { ...h, newCost, change, changePct };
+    });
 
   const pricedHoldings = enriched.filter((h) => h.marketValue !== undefined);
   const missingQuoteCount = enriched.length - pricedHoldings.length;
@@ -744,8 +774,39 @@ export default function PortfolioPage() {
           <section className="ledger what-if" aria-label="Average cost after buying more">
             <div className="section-heading">
               <h2>If I buy more</h2>
-              <p>Average cost after buying at the current price</p>
+              <div className="what-if-picker" ref={pickerRef}>
+                <button
+                  className="btn secondary"
+                  type="button"
+                  onClick={() => setPickerOpen((open) => !open)}
+                  aria-haspopup="listbox"
+                  aria-expanded={pickerOpen}
+                >
+                  {whatIfRows.length === 0 ? "Choose stocks" : `${whatIfRows.length} selected`} ▾
+                </button>
+                {pickerOpen && (
+                  <ul className="what-if-menu" role="listbox" aria-multiselectable="true">
+                    {sortedHoldings.map((h) => (
+                      <li key={h.ticker} role="option" aria-selected={h.buyMore !== null}>
+                        <label>
+                          <input
+                            type="checkbox"
+                            checked={h.buyMore !== null}
+                            onChange={(e) => saveBuyMore(h.ticker, e.target.checked ? 1 : null)}
+                          />
+                          {h.ticker}
+                        </label>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
             </div>
+            {whatIfRows.length === 0 ? (
+              <div className="empty-state compact">
+                Pick the stocks you are thinking of buying more of to see how your average cost would move.
+              </div>
+            ) : (
             <div className="table-scroll">
               <table>
                 <thead>
@@ -765,10 +826,19 @@ export default function PortfolioPage() {
                       <td className="num">
                         <input
                           className="what-if-qty"
-                          value={whatIfQty[h.ticker] ?? "1"}
+                          value={whatIfQty[h.ticker] ?? String(h.buyMore)}
                           onChange={(e) =>
                             setWhatIfQty((prev) => ({ ...prev, [h.ticker]: e.target.value }))
                           }
+                          onBlur={(e) => {
+                            const n = parsePositiveNumber(e.target.value.trim());
+                            if (n !== null) saveBuyMore(h.ticker, n);
+                            setWhatIfQty((prev) => {
+                              const copy = { ...prev };
+                              delete copy[h.ticker];
+                              return copy;
+                            });
+                          }}
                           inputMode="decimal"
                           aria-label={`Shares of ${h.ticker} to buy`}
                         />
@@ -788,6 +858,7 @@ export default function PortfolioPage() {
                 </tbody>
               </table>
             </div>
+            )}
           </section>
 
           <section className="allocation sector-allocation" aria-label="Sector allocation">
