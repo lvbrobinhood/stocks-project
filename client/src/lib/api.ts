@@ -60,7 +60,7 @@ async function getJson<T>(path: string): Promise<T> {
   }
 
   if (data === null || typeof data !== "object") {
-    throw new Error(`Unexpected non-JSON response from ${url} (${res.status}). Check VITE_API_BASE.`);
+    throw new Error(`Could not parse response from ${url} (${res.status}) as JSON.`);
   }
 
   return data as T;

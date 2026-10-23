@@ -150,6 +150,9 @@ def stock_chart():
 
     try:
         hist = yf.Ticker(ticker).history(period="2y")
+        # Yahoo can include a partial bar for the current session with no prices.
+        # NaN is not valid JSON, so drop any row missing a price.
+        hist = hist.dropna(subset=["Open", "High", "Low", "Close"])
         if hist.empty:
             return jsonify({"error": "ticker not found or no data"}), 404
 
