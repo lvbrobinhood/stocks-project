@@ -185,7 +185,7 @@ export default function Analysis() {
                       </span>
                       <span className="signal-detail">
                         {result.lastCross
-                          ? `${capitalize(result.lastCross.direction)} cross ${result.lastCross.barsAgo === 0 ? "today" : `${result.lastCross.barsAgo} days ago`}`
+                          ? `${capitalize(result.lastCross.direction)} cross ${result.lastCross.barsAgo === 0 ? "today" : result.lastCross.barsAgo === 1 ? "1 day ago" : `${result.lastCross.barsAgo} days ago`}`
                           : "No cross in the loaded history"}
                       </span>
                     </>

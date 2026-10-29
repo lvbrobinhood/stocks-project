@@ -103,7 +103,11 @@ export type CrossoverSignal = {
   momentum: "widening" | "narrowing" | "stable";
 };
 
-export const CROSSOVER_PAIRS = [[20, 50]] as const;
+export const CROSSOVER_PAIRS = [
+  [20, 50],
+  [20, 100],
+  [20, 200],
+] as const;
 
 export const CROSSOVER_PARAMS = {
   /** Within this band, in percent, the two averages count as aligned neither way. */
