@@ -174,6 +174,9 @@ export default function Analysis() {
                   )}
                 </div>
               ))}
+            </div>
+
+            <div className="signals crossovers">
               {crossovers.map(({ fast, slow, result }) => (
                 <div key={`${fast}-${slow}`} className="signal">
                   <span className="stat-label">{fast}/{slow} MA crossover</span>

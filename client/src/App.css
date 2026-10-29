@@ -488,6 +488,12 @@ a {
   border-top: 1px solid var(--rule);
 }
 
+.signals.crossovers {
+  margin-top: 28px;
+  padding-top: 0;
+  border-top: none;
+}
+
 .signal {
   display: flex;
   flex-direction: column;
