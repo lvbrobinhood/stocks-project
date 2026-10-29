@@ -1,7 +1,17 @@
 import { fetchStockChart, fetchStats, type ChartPoint, type StatsResponse } from "../../lib/api";
 import { useState } from "react";
 import PriceChart from "./PriceChart";
-import { RANGE_KEYS, SIGNAL_PARAMS, SIGNAL_WINDOWS, movingAverageSignal, type MovingAverage, type RangeKey } from "./indicators";
+import {
+  CROSSOVER_PAIRS,
+  CROSSOVER_PARAMS,
+  RANGE_KEYS,
+  SIGNAL_PARAMS,
+  SIGNAL_WINDOWS,
+  crossoverSignal,
+  movingAverageSignal,
+  type MovingAverage,
+  type RangeKey,
+} from "./indicators";
 
 const DEFAULT_AVERAGES: MovingAverage[] = [
   { window: 20, color: "#9e9e9e" },
@@ -41,6 +51,8 @@ export default function Analysis() {
   const addAverage = () => setAverages((prev) => [...prev, { window: 10, color: "#8e24aa" }]);
 
   const maSignals = SIGNAL_WINDOWS.map((window) => ({ window, result: movingAverageSignal(rawData, window) }));
+  const crossovers = CROSSOVER_PAIRS.map(([fast, slow]) => ({ fast, slow, result: crossoverSignal(rawData, fast, slow) }));
+  const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
   const signed = (n: number) => `${n >= 0 ? "+" : ""}${n.toFixed(2)}%`;
 
   return (
@@ -149,14 +161,32 @@ export default function Analysis() {
                   <span className="stat-label">{window}-day MA indicator</span>
                   {result ? (
                     <>
-                      <span className={`signal-value ${result.signal}`}>
-                        {result.signal.charAt(0).toUpperCase() + result.signal.slice(1)}
-                      </span>
+                      <span className={`signal-value ${result.signal}`}>{capitalize(result.signal)}</span>
                       <span className="signal-detail">
                         Price {Math.abs(result.distancePct).toFixed(2)}% {result.distancePct >= 0 ? "above" : "below"} the {window}MA
                       </span>
                       <span className="signal-detail">
                         {window}MA {signed(result.slopePct)} over {result.params.slopeLookback} days
+                      </span>
+                    </>
+                  ) : (
+                    <span className="signal-detail">Not enough data.</span>
+                  )}
+                </div>
+              ))}
+              {crossovers.map(({ fast, slow, result }) => (
+                <div key={`${fast}-${slow}`} className="signal">
+                  <span className="stat-label">{fast}/{slow} MA crossover</span>
+                  {result ? (
+                    <>
+                      <span className={`signal-value ${result.alignment}`}>{capitalize(result.alignment)}</span>
+                      <span className="signal-detail">
+                        {fast}MA {Math.abs(result.spreadPct).toFixed(2)}% {result.spreadPct >= 0 ? "above" : "below"} the {slow}MA, {result.momentum}
+                      </span>
+                      <span className="signal-detail">
+                        {result.lastCross
+                          ? `${capitalize(result.lastCross.direction)} cross ${result.lastCross.barsAgo === 0 ? "today" : `${result.lastCross.barsAgo} days ago`}`
+                          : "No cross in the loaded history"}
                       </span>
                     </>
                   ) : (
@@ -183,6 +213,8 @@ export default function Analysis() {
             </span>
           );
         })}
+        . Crossovers: the two averages count as neutral within ±{CROSSOVER_PARAMS.spreadBandPct}% of each other, and the
+        spread is widening or narrowing when it changes by more than that over {CROSSOVER_PARAMS.spreadLookback} days.
       </p>
     </main>
   );

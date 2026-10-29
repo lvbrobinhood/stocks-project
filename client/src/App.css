@@ -499,7 +499,8 @@ a {
   font-weight: 600;
 }
 
-.signal-value.positive {
+.signal-value.positive,
+.signal-value.bullish {
   color: var(--gain);
 }
 
@@ -507,7 +508,8 @@ a {
   color: var(--muted);
 }
 
-.signal-value.negative {
+.signal-value.negative,
+.signal-value.bearish {
   color: var(--loss);
 }
 

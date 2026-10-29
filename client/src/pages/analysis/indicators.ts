@@ -90,3 +90,67 @@ export function movingAverageSignal(data: ChartPoint[], window: number): MovingA
 
   return { signal, distancePct, slopePct, params };
 }
+
+export type Alignment = "bullish" | "bearish" | "neutral";
+
+export type CrossoverSignal = {
+  alignment: Alignment;
+  /** Fast average relative to the slow one, in percent. Positive means fast above slow. */
+  spreadPct: number;
+  /** Most recent cross, or null when none occurred in the available history. */
+  lastCross: { direction: "bullish" | "bearish"; barsAgo: number } | null;
+  /** Whether the absolute spread has grown or shrunk over CROSSOVER_PARAMS.spreadLookback bars. */
+  momentum: "widening" | "narrowing" | "stable";
+};
+
+export const CROSSOVER_PAIRS = [[20, 50]] as const;
+
+export const CROSSOVER_PARAMS = {
+  /** Within this band, in percent, the two averages count as aligned neither way. */
+  spreadBandPct: 0.25,
+  /** Bars between the two spreads compared for momentum. */
+  spreadLookback: 5,
+};
+
+/**
+ * Crossover of a fast moving average over a slow one. The alignment is the
+ * sign of the spread outside a neutral band. A cross is registered on the bar
+ * the alignment becomes decisive on the opposite side from the last decisive
+ * alignment, so days spent inside the band while crossing count once, and a
+ * wobble into the band and back out on the same side does not count at all.
+ */
+export function crossoverSignal(data: ChartPoint[], fastWindow: number, slowWindow: number): CrossoverSignal | null {
+  const { spreadBandPct, spreadLookback } = CROSSOVER_PARAMS;
+  const fast = simpleMovingAverage(data, fastWindow);
+  const slow = simpleMovingAverage(data, slowWindow);
+
+  const spread: (number | undefined)[] = data.map((_, i) => {
+    const f = fast[i];
+    const s = slow[i];
+    return f === undefined || s === undefined ? undefined : ((f - s) / s) * 100;
+  });
+  const alignmentAt = (i: number): Alignment | undefined => {
+    const v = spread[i];
+    if (v === undefined) return undefined;
+    return v > spreadBandPct ? "bullish" : v < -spreadBandPct ? "bearish" : "neutral";
+  };
+
+  const last = data.length - 1;
+  const current = spread[last];
+  const earlier = spread[last - spreadLookback];
+  if (current === undefined || earlier === undefined) return null;
+
+  let lastCross: CrossoverSignal["lastCross"] = null;
+  let prior: Alignment | undefined;
+  for (let i = 0; i <= last; i++) {
+    const a = alignmentAt(i);
+    if (a === undefined || a === "neutral") continue;
+    if (prior !== undefined && a !== prior) lastCross = { direction: a, barsAgo: last - i };
+    prior = a;
+  }
+
+  const change = Math.abs(current) - Math.abs(earlier);
+  const momentum = change > spreadBandPct ? "widening" : change < -spreadBandPct ? "narrowing" : "stable";
+
+  return { alignment: alignmentAt(last) as Alignment, spreadPct: current, lastCross, momentum };
+}
