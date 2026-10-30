@@ -174,10 +174,9 @@ export default function Analysis() {
                 {score > 0 ? "+" : ""}
                 {score}
               </span>
-              <span className="signal-detail">
-                Sum of {verdicts.length} indicators scored +1, 0 or -1
-                {scored < verdicts.length ? ` (${verdicts.length - scored} without enough data)` : ""}
-              </span>
+              {scored < verdicts.length && (
+                <span className="signal-detail">{verdicts.length - scored} without enough data</span>
+              )}
             </div>
 
             <div className="signals scored">

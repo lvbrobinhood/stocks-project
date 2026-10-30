@@ -491,7 +491,7 @@ a {
 .score-row {
   display: flex;
   flex-wrap: wrap;
-  align-items: baseline;
+  align-items: center;
   gap: 12px;
   margin-top: 20px;
   padding-top: 20px;
@@ -499,21 +499,29 @@ a {
 }
 
 .score-value {
-  font-size: 1.75rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 48px;
+  height: 48px;
+  padding: 0 8px;
+  border-radius: 4px;
+  color: var(--ink);
+  font-size: 1.5rem;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
 
 .score-value.positive {
-  color: var(--gain);
+  background: var(--gain);
 }
 
 .score-value.neutral {
-  color: var(--muted);
+  background: var(--muted);
 }
 
 .score-value.negative {
-  color: var(--loss);
+  background: var(--loss);
 }
 
 .signals.scored {
