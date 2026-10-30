@@ -9,6 +9,7 @@ import {
   SIGNAL_WINDOWS,
   crossoverSignal,
   movingAverageSignal,
+  signalScore,
   type MovingAverage,
   type RangeKey,
 } from "./indicators";
@@ -54,6 +55,13 @@ export default function Analysis() {
   const crossoverRows = CROSSOVER_ROWS.map((row) =>
     row.map(([fast, slow]) => ({ fast, slow, result: crossoverSignal(rawData, fast, slow) }))
   );
+  const verdicts = [
+    ...maSignals.map(({ result }) => result?.signal),
+    ...crossoverRows.flat().map(({ result }) => result?.alignment),
+  ];
+  const score = verdicts.reduce((sum, v) => sum + signalScore(v), 0);
+  const scored = verdicts.filter((v) => v !== undefined).length;
+  const scoreTone = score > 0 ? "positive" : score < 0 ? "negative" : "neutral";
   // The 50/200 crossover has its own names in common usage.
   const crossName = (fast: number, slow: number, direction: "bullish" | "bearish") =>
     fast === 50 && slow === 200 ? (direction === "bullish" ? "Golden cross" : "Death cross") : `${capitalize(direction)} cross`;
@@ -160,7 +168,19 @@ export default function Analysis() {
                 </div>
               </div>
             )}
-            <div className="signals">
+            <div className="score-row">
+              <span className="stat-label">MA score</span>
+              <span className={`score-value ${scoreTone}`}>
+                {score > 0 ? "+" : ""}
+                {score}
+              </span>
+              <span className="signal-detail">
+                Sum of {verdicts.length} indicators scored +1, 0 or -1
+                {scored < verdicts.length ? ` (${verdicts.length - scored} without enough data)` : ""}
+              </span>
+            </div>
+
+            <div className="signals scored">
               {maSignals.map(({ window, result }) => (
                 <div key={window} className="signal">
                   <span className="stat-label">{window}-day MA indicator</span>

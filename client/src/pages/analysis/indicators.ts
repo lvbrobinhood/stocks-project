@@ -166,3 +166,10 @@ export function crossoverSignal(data: ChartPoint[], fastWindow: number, slowWind
 
   return { alignment: alignmentAt(last) as Alignment, spreadPct: current, lastCross, momentum };
 }
+
+/** Score an indicator verdict: 1 for positive or bullish, -1 for negative or bearish, else 0. */
+export function signalScore(verdict: Signal | Alignment | undefined): -1 | 0 | 1 {
+  if (verdict === "positive" || verdict === "bullish") return 1;
+  if (verdict === "negative" || verdict === "bearish") return -1;
+  return 0;
+}

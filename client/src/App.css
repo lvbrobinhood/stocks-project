@@ -488,6 +488,40 @@ a {
   border-top: 1px solid var(--rule);
 }
 
+.score-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 12px;
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid var(--rule);
+}
+
+.score-value {
+  font-size: 1.75rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.score-value.positive {
+  color: var(--gain);
+}
+
+.score-value.neutral {
+  color: var(--muted);
+}
+
+.score-value.negative {
+  color: var(--loss);
+}
+
+.signals.scored {
+  margin-top: 20px;
+  padding-top: 0;
+  border-top: none;
+}
+
 .signals.crossovers {
   margin-top: 40px;
   padding-top: 0;
