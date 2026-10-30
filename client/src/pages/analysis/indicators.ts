@@ -103,10 +103,17 @@ export type CrossoverSignal = {
   momentum: "widening" | "narrowing" | "stable";
 };
 
-export const CROSSOVER_PAIRS = [
-  [20, 50],
-  [20, 100],
-  [20, 200],
+/** Crossover pairs, one row per fast window. */
+export const CROSSOVER_ROWS = [
+  [
+    [20, 50],
+    [20, 100],
+    [20, 200],
+  ],
+  [
+    [50, 100],
+    [50, 200],
+  ],
 ] as const;
 
 export const CROSSOVER_PARAMS = {

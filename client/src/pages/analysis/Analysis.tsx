@@ -2,7 +2,7 @@ import { fetchStockChart, fetchStats, type ChartPoint, type StatsResponse } from
 import { useState } from "react";
 import PriceChart from "./PriceChart";
 import {
-  CROSSOVER_PAIRS,
+  CROSSOVER_ROWS,
   CROSSOVER_PARAMS,
   RANGE_KEYS,
   SIGNAL_PARAMS,
@@ -51,7 +51,12 @@ export default function Analysis() {
   const addAverage = () => setAverages((prev) => [...prev, { window: 10, color: "#8e24aa" }]);
 
   const maSignals = SIGNAL_WINDOWS.map((window) => ({ window, result: movingAverageSignal(rawData, window) }));
-  const crossovers = CROSSOVER_PAIRS.map(([fast, slow]) => ({ fast, slow, result: crossoverSignal(rawData, fast, slow) }));
+  const crossoverRows = CROSSOVER_ROWS.map((row) =>
+    row.map(([fast, slow]) => ({ fast, slow, result: crossoverSignal(rawData, fast, slow) }))
+  );
+  // The 50/200 crossover has its own names in common usage.
+  const crossName = (fast: number, slow: number, direction: "bullish" | "bearish") =>
+    fast === 50 && slow === 200 ? (direction === "bullish" ? "Golden cross" : "Death cross") : `${capitalize(direction)} cross`;
   const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
   const signed = (n: number) => `${n >= 0 ? "+" : ""}${n.toFixed(2)}%`;
 
@@ -176,28 +181,32 @@ export default function Analysis() {
               ))}
             </div>
 
-            <div className="signals crossovers">
-              {crossovers.map(({ fast, slow, result }) => (
-                <div key={`${fast}-${slow}`} className="signal">
-                  <span className="stat-label">{fast}/{slow} MA crossover</span>
-                  {result ? (
-                    <>
-                      <span className={`signal-value ${result.alignment}`}>{capitalize(result.alignment)}</span>
-                      <span className="signal-detail">
-                        {fast}MA {Math.abs(result.spreadPct).toFixed(2)}% {result.spreadPct >= 0 ? "above" : "below"} the {slow}MA, {result.momentum}
-                      </span>
-                      <span className="signal-detail">
-                        {result.lastCross
-                          ? `${capitalize(result.lastCross.direction)} cross ${result.lastCross.barsAgo === 0 ? "today" : result.lastCross.barsAgo === 1 ? "1 day ago" : `${result.lastCross.barsAgo} days ago`}`
-                          : "No cross in the loaded history"}
-                      </span>
-                    </>
-                  ) : (
-                    <span className="signal-detail">Not enough data.</span>
-                  )}
-                </div>
-              ))}
-            </div>
+            {crossoverRows.map((row, r) => (
+              <div key={r} className="signals crossovers">
+                {row.map(({ fast, slow, result }) => (
+                  <div key={`${fast}-${slow}`} className="signal">
+                    <span className="stat-label">
+                      {fast}/{slow} MA crossover{fast === 50 && slow === 200 ? " (golden / death)" : ""}
+                    </span>
+                    {result ? (
+                      <>
+                        <span className={`signal-value ${result.alignment}`}>{capitalize(result.alignment)}</span>
+                        <span className="signal-detail">
+                          {fast}MA {Math.abs(result.spreadPct).toFixed(2)}% {result.spreadPct >= 0 ? "above" : "below"} the {slow}MA, {result.momentum}
+                        </span>
+                        <span className="signal-detail">
+                          {result.lastCross
+                            ? `${crossName(fast, slow, result.lastCross.direction)} ${result.lastCross.barsAgo === 0 ? "today" : result.lastCross.barsAgo === 1 ? "1 day ago" : `${result.lastCross.barsAgo} days ago`}`
+                            : "No cross in the loaded history"}
+                        </span>
+                      </>
+                    ) : (
+                      <span className="signal-detail">Not enough data.</span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ))}
           </>
         ) : (
           <div className="empty-state">Enter a ticker to load a chart.</div>
