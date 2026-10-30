@@ -186,7 +186,7 @@ export default function Analysis() {
                 {row.map(({ fast, slow, result }) => (
                   <div key={`${fast}-${slow}`} className="signal">
                     <span className="stat-label">
-                      {fast}/{slow} MA crossover{fast === 50 && slow === 200 ? " (golden / death)" : ""}
+                      {fast}/{slow} MA crossover
                     </span>
                     {result ? (
                       <>

@@ -113,6 +113,7 @@ export const CROSSOVER_ROWS = [
   [
     [50, 100],
     [50, 200],
+    [100, 200],
   ],
 ] as const;
 
