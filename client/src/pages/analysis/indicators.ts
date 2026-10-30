@@ -173,3 +173,42 @@ export function signalScore(verdict: Signal | Alignment | undefined): -1 | 0 | 1
   if (verdict === "negative" || verdict === "bearish") return -1;
   return 0;
 }
+
+/**
+ * Weights for the combined score. Each group has a budget of 5 points so the
+ * crossovers cannot outvote the price tiles by sheer number. Longer averages
+ * and the more widely watched crossovers carry more weight.
+ */
+export const SCORE_WEIGHTS = {
+  price: { 20: 1, 50: 1, 100: 1.5, 200: 1.5 } as Record<number, number>,
+  crossover: { "20/50": 1, "20/100": 0.5, "20/200": 0.75, "50/100": 0.75, "50/200": 1.5, "100/200": 0.5 } as Record<string, number>,
+  /** A crossover's weight decays linearly from full at the cross to `crossFloor` after `crossDecayBars`. */
+  crossDecayBars: 60,
+  crossFloor: 1 / 3,
+};
+
+/** Fraction of a crossover's weight that still applies, given the age of its last cross. */
+export function crossoverAgeFactor(barsAgo: number | null): number {
+  const { crossDecayBars, crossFloor } = SCORE_WEIGHTS;
+  if (barsAgo === null) return crossFloor;
+  return Math.max(crossFloor, 1 - (1 - crossFloor) * (barsAgo / crossDecayBars));
+}
+
+export type ScoredIndicators = {
+  priceSignals: { window: number; result: MovingAverageSignal | null }[];
+  crossovers: { fast: number; slow: number; result: CrossoverSignal | null }[];
+};
+
+/** Weighted sum of all indicators, in the range -10 to +10, rounded to one decimal. */
+export function combinedScore({ priceSignals, crossovers }: ScoredIndicators): number {
+  let total = 0;
+  for (const { window, result } of priceSignals) {
+    total += (SCORE_WEIGHTS.price[window] ?? 0) * signalScore(result?.signal);
+  }
+  for (const { fast, slow, result } of crossovers) {
+    if (!result) continue;
+    const weight = SCORE_WEIGHTS.crossover[`${fast}/${slow}`] ?? 0;
+    total += weight * crossoverAgeFactor(result.lastCross?.barsAgo ?? null) * signalScore(result.alignment);
+  }
+  return Math.round(total * 10) / 10;
+}

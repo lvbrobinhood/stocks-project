@@ -5,11 +5,12 @@ import {
   CROSSOVER_ROWS,
   CROSSOVER_PARAMS,
   RANGE_KEYS,
+  SCORE_WEIGHTS,
   SIGNAL_PARAMS,
   SIGNAL_WINDOWS,
   crossoverSignal,
+  combinedScore,
   movingAverageSignal,
-  signalScore,
   type MovingAverage,
   type RangeKey,
 } from "./indicators";
@@ -59,7 +60,7 @@ export default function Analysis() {
     ...maSignals.map(({ result }) => result?.signal),
     ...crossoverRows.flat().map(({ result }) => result?.alignment),
   ];
-  const score = verdicts.reduce((sum, v) => sum + signalScore(v), 0);
+  const score = combinedScore({ priceSignals: maSignals, crossovers: crossoverRows.flat() });
   const scored = verdicts.filter((v) => v !== undefined).length;
   const scoreTone = score > 0 ? "positive" : score < 0 ? "negative" : "neutral";
   // The 50/200 crossover has its own names in common usage.
@@ -172,7 +173,7 @@ export default function Analysis() {
               <span className="stat-label">MA score</span>
               <span className={`score-value ${scoreTone}`}>
                 {score > 0 ? "+" : ""}
-                {score}
+                {score.toFixed(1)}
               </span>
               {scored < verdicts.length && (
                 <span className="signal-detail">{verdicts.length - scored} without enough data</span>
@@ -246,6 +247,16 @@ export default function Analysis() {
         })}
         . Crossovers: the two averages count as neutral within ±{CROSSOVER_PARAMS.spreadBandPct}% of each other, and the
         spread is widening or narrowing when it changes by more than that over {CROSSOVER_PARAMS.spreadLookback} days.
+        MA score: each verdict counts +1, 0 or -1 times its weight. Price tiles share 5 points (
+        {Object.entries(SCORE_WEIGHTS.price)
+          .map(([w, k]) => `${w}MA ${k}`)
+          .join(", ")}
+        ) and crossovers share 5 points (
+        {Object.entries(SCORE_WEIGHTS.crossover)
+          .map(([pair, k]) => `${pair} ${k}`)
+          .join(", ")}
+        ), with a crossover's weight falling to a third of its value {SCORE_WEIGHTS.crossDecayBars} days after its
+        last cross, or when no cross is in the loaded history.
       </p>
     </main>
   );
